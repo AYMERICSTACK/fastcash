@@ -7942,3 +7942,127 @@ textarea {
 .account-address-editor {
   scroll-margin-top: 120px;
 }
+
+/* =========================================================
+   FAST CASH — Mobile header + scrollable burger menu hotfix
+   ========================================================= */
+@media (max-width: 900px) {
+  /* Keep the mobile header intentionally simple: logo + actions. */
+  .luxe-topbar-inner {
+    height: 72px !important;
+    min-height: 72px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+  }
+
+  .luxe-topbar-left,
+  .header-social-links {
+    display: none !important;
+  }
+
+  .luxe-logo {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: calc(100% - 190px) !important;
+    justify-content: flex-start !important;
+    gap: 9px !important;
+  }
+
+  .luxe-logo-mark {
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important;
+  }
+
+  .luxe-logo-mark img {
+    width: 29px !important;
+    max-height: 29px !important;
+  }
+
+  .luxe-logo-text {
+    min-width: 0 !important;
+  }
+
+  .luxe-logo-text strong {
+    font-size: 18px !important;
+    letter-spacing: 0.12em !important;
+    white-space: nowrap !important;
+  }
+
+  .luxe-logo-text small {
+    margin-top: 3px !important;
+    font-size: 9px !important;
+    letter-spacing: 0.3em !important;
+    white-space: nowrap !important;
+  }
+
+  .luxe-actions {
+    flex: 0 0 auto !important;
+    gap: 2px !important;
+  }
+
+  .luxe-icon-btn,
+  .luxe-menu-toggle {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+  }
+
+  /* Full-height drawer: the drawer itself owns vertical scrolling. */
+  .luxe-mobile-panel {
+    inset: 72px 0 0 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 18px 0 max(34px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .luxe-mobile-inner {
+    min-height: min-content !important;
+    padding-bottom: 28px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .luxe-topbar-inner {
+    gap: 6px !important;
+  }
+
+  .luxe-logo {
+    max-width: calc(100% - 166px) !important;
+    gap: 7px !important;
+  }
+
+  .luxe-logo-mark {
+    width: 34px !important;
+    height: 34px !important;
+    flex-basis: 34px !important;
+  }
+
+  .luxe-logo-mark img {
+    width: 26px !important;
+    max-height: 26px !important;
+  }
+
+  .luxe-logo-text strong {
+    font-size: 16px !important;
+    letter-spacing: 0.09em !important;
+  }
+
+  .luxe-logo-text small {
+    font-size: 8px !important;
+    letter-spacing: 0.24em !important;
+  }
+
+  .luxe-icon-btn,
+  .luxe-menu-toggle {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+}
