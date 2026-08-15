@@ -5,6 +5,7 @@ import { ADMIN_SESSION_COOKIE, verifyPayload, type AdminSession } from "@/lib/se
 const PILOTAGE_ROUTES: Record<string, string> = {
   "/pilotage": "/admin",
   "/pilotage/commandes": "/admin/orders",
+  "/pilotage/offres": "/admin/offers",
   "/pilotage/produits": "/admin/products",
   "/pilotage/medias": "/admin/media",
   "/pilotage/stocks": "/admin/inventory",
@@ -23,6 +24,7 @@ function resolvePilotagePath(pathname: string) {
 
   const mappings = [
     ["/pilotage/commandes/", "/admin/orders/"],
+    ["/pilotage/offres/", "/admin/offers/"],
     ["/pilotage/produits/", "/admin/products/"],
     ["/pilotage/categories/", "/admin/categories/"],
     ["/pilotage/marques/", "/admin/brands/"],

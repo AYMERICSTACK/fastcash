@@ -11,7 +11,7 @@ export default async function AdminDashboardPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [products, customers, orders, lowStockProducts, outOfStockCount, allOrders, todayOrders] = await Promise.all([
+  const [products, customers, orders, lowStockProducts, outOfStockCount, allOrders, todayOrders, pendingOffers] = await Promise.all([
     prisma.product.count(),
     prisma.customer.count(),
     prisma.order.findMany({ include: { shipment: true, customer: true, payment: true }, orderBy: { createdAt: "desc" }, take: 8 }),
@@ -19,6 +19,7 @@ export default async function AdminDashboardPage() {
     prisma.product.count({ where: { stock: { lte: 0 } } }),
     prisma.order.findMany({ select: { total: true, status: true, payment: { select: { status: true } } } }),
     prisma.order.count({ where: { createdAt: { gte: today } } }),
+    prisma.productOffer.count({ where: { status: "PENDING" } }),
   ]);
 
   const paidOrders = allOrders.filter((order) => ["paid", "confirmed"].includes(order.payment?.status || ""));
@@ -48,6 +49,7 @@ export default async function AdminDashboardPage() {
         <Link href="/pilotage/commandes?vue=preparing" className={styles.orderPilotCard}><span>En préparation</span><strong>{preparing}</strong><small>Continuer le traitement</small></Link>
         <Link href="/pilotage/commandes?vue=pickup" className={styles.orderPilotCard}><span>Prêtes au retrait</span><strong>{pickup}</strong><small>Remettre au client</small></Link>
         <Link href="/pilotage/commandes?vue=shipped" className={styles.orderPilotCard}><span>Expédiées</span><strong>{shipped}</strong><small>Suivre les livraisons</small></Link>
+        <Link href="/pilotage/offres" className={`${styles.orderPilotCard} ${pendingOffers > 0 ? styles.offerPilotCard : ""}`}><span>Offres clients</span><strong>{pendingOffers}</strong><small>{pendingOffers > 0 ? "À traiter maintenant" : "Aucune offre en attente"}</small></Link>
       </section>
 
       <section className={styles.grid2}>

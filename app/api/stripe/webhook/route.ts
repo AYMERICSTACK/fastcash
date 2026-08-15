@@ -658,6 +658,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, duplicate: true });
     }
 
+    const offerTokens = String(session.metadata?.offer_tokens || "").split(",").filter(Boolean);
+    if (offerTokens.length) {
+      await prisma.productOffer.updateMany({
+        where: { purchaseToken: { in: offerTokens }, usedAt: null },
+        data: { status: "PURCHASED", usedAt: new Date() },
+      });
+    }
+
     const adminEmail =
       settings.orderEmail ||
       process.env.ORDER_TO_EMAIL ||

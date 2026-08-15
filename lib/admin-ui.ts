@@ -28,6 +28,20 @@ export function getPaymentStatusLabel(status?: string | null) {
   return PAYMENT_STATUS_LABELS[status] ?? status;
 }
 
+export const OFFER_STATUS_LABELS: Record<string, string> = {
+  PENDING: "En attente",
+  ACCEPTED: "Acceptée",
+  COUNTERED: "Contre-offre envoyée",
+  REFUSED: "Refusée",
+  PURCHASED: "Achat finalisé",
+  EXPIRED: "Expirée",
+};
+
+export function getOfferStatusLabel(status?: string | null) {
+  if (!status) return "—";
+  return OFFER_STATUS_LABELS[status] ?? status;
+}
+
 export function formatAdminDate(value: Date | string) {
   return new Intl.DateTimeFormat("fr-CH", {
     day: "2-digit",

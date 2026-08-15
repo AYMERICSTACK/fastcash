@@ -2172,3 +2172,361 @@
 .refundRestockStateDone { border-color:rgba(75,184,112,.36); background:linear-gradient(135deg,rgba(30,110,60,.18),rgba(12,12,12,.96)); }
 .refundRestockStateDone span { color:#7fd39b; }
 @media (max-width: 760px) { .refundRestockState { align-items:stretch; flex-direction:column; } .refundRestockState button { width:100%; } }
+
+/* --- V4.0 Mobile back-office + notifications offres --- */
+.nav a,
+.mobileNav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.navCounter,
+.mobileAlertDot {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d4af37;
+  color: #080808;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 950;
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.09);
+}
+
+.mobileAdminHeader { display: none; }
+
+.offerStatus {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 950;
+  white-space: nowrap;
+}
+.offerStatusPending { color: #f4d77d; background: rgba(212,175,55,.12); border-color: rgba(212,175,55,.28); }
+.offerStatusAccepted { color: #9ee6b2; background: rgba(61,181,96,.12); border-color: rgba(61,181,96,.28); }
+.offerStatusCountered { color: #9bd7ff; background: rgba(65,154,215,.12); border-color: rgba(65,154,215,.28); }
+.offerStatusPurchased { color: #c4f0cd; background: rgba(48,150,78,.16); border-color: rgba(48,150,78,.34); }
+.offerStatusRefused { color: #ffb4aa; background: rgba(207,73,60,.12); border-color: rgba(207,73,60,.28); }
+.offerStatusExpired { color: rgba(247,241,228,.58); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.12); }
+
+.offerMobileList { display: none; }
+.offerPilotCard {
+  border-color: rgba(212,175,55,.42);
+  background: radial-gradient(circle at 80% 10%, rgba(212,175,55,.18), transparent 38%), rgba(212,175,55,.08);
+}
+
+@media (max-width: 1050px) {
+  .shell {
+    display: block;
+    min-width: 0;
+  }
+
+  .sidebar { display: none; }
+
+  .mobileAdminHeader {
+    position: sticky;
+    z-index: 80;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 72px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(212,175,55,.2);
+    background: rgba(7,7,7,.96);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobileBrand { display: grid; gap: 2px; min-width: 0; }
+  .mobileBrand strong { color: #fff; font-size: 15px; letter-spacing: .12em; }
+  .mobileBrand span { color: #d4af37; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .18em; }
+
+  .mobileMenu { position: relative; }
+  .mobileMenu summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    padding: 8px 11px 8px 13px;
+    border: 1px solid rgba(212,175,55,.22);
+    border-radius: 14px;
+    color: #f7f1e4;
+    background: rgba(255,255,255,.045);
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .mobileMenu summary::-webkit-details-marker { display: none; }
+  .burgerIcon { width: 20px; display: grid; gap: 4px; }
+  .burgerIcon i { display: block; height: 2px; border-radius: 99px; background: currentColor; }
+  .mobileMenu[open] .burgerIcon i:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .mobileMenu[open] .burgerIcon i:nth-child(2) { opacity: 0; }
+  .mobileMenu[open] .burgerIcon i:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+  .mobileMenuPanel {
+    position: absolute;
+    z-index: 120;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(92vw, 390px);
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 18px;
+    border: 1px solid rgba(212,175,55,.18);
+    border-radius: 18px;
+    background: #0b0b0b;
+    box-shadow: -20px 24px 80px rgba(0,0,0,.62);
+  }
+  .mobileNav { display: grid; gap: 7px; }
+  .mobileNav a {
+    min-height: 48px;
+    padding: 12px 13px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 14px;
+    color: rgba(247,241,228,.8);
+    font-weight: 850;
+    background: rgba(255,255,255,.025);
+  }
+  .mobileNav a[href="/pilotage/offres"] { border-color: rgba(212,175,55,.18); }
+  .mobileMenuFooter { display: grid; gap: 9px; margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
+
+  .content {
+    width: 100%;
+    min-width: 0;
+    padding: 22px 18px 34px;
+    overflow: visible;
+  }
+
+  .topbar { gap: 14px; margin-bottom: 20px; }
+  .title { font-size: clamp(30px, 9vw, 46px); line-height: 1; }
+  .subtitle { margin-top: 9px; line-height: 1.55; }
+  .badge { align-self: flex-start; }
+  .card { border-radius: 20px; padding: 18px; }
+  .grid4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .grid2 { grid-template-columns: 1fr; }
+  .productHeroCard { padding: 18px; border-radius: 20px; }
+  .settingsToolbar { padding: 18px; border-radius: 20px; }
+}
+
+@media (max-width: 760px) {
+  .content { padding: 18px 14px 30px; }
+  .mobileAdminHeader { padding-inline: 14px; }
+  .grid4 { grid-template-columns: 1fr; }
+  .topbar { flex-direction: column; }
+  .sectionHead { flex-direction: column; gap: 12px; }
+  .headerActions, .actions, .formActions { width: 100%; }
+  .headerActions > *, .actions > *, .formActions > * { max-width: 100%; }
+  .button, .buttonSecondary, .actionBtn { min-height: 44px; }
+  .tableScroll { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tableScroll .table { min-width: 760px; }
+  .card:has(> .table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .offerDesktopTable { display: none; }
+  .offerMobileList { display: grid; gap: 12px; }
+  .offerMobileCard {
+    display: grid;
+    gap: 14px;
+    padding: 17px;
+    border: 1px solid rgba(212,175,55,.18);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    color: #f7f1e4;
+    box-shadow: 0 18px 50px rgba(0,0,0,.2);
+  }
+  .offerMobileTop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .offerMobileTop time { color: rgba(247,241,228,.46); font-size: 11px; }
+  .offerMobileProduct { color: #fff; font-size: 17px; line-height: 1.35; }
+  .offerMobileClient { display: grid; gap: 3px; }
+  .offerMobileClient span { color: rgba(247,241,228,.54); font-size: 12px; overflow-wrap: anywhere; }
+  .offerMobilePrices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .offerMobilePrices span { display: grid; gap: 5px; padding: 11px; border-radius: 14px; background: rgba(255,255,255,.045); color: rgba(247,241,228,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .offerMobilePrices strong { color: #fff; font-size: 15px; letter-spacing: 0; text-transform: none; }
+  .offerMobilePrices span:last-child strong { color: #f4d77d; }
+  .offerMobileOpen { padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); color: #f4d77d; font-size: 12px; font-weight: 950; }
+}
+
+@media (max-width: 420px) {
+  .mobileMenu summary > span:first-child { display: none; }
+  .offerMobilePrices { grid-template-columns: 1fr; }
+  .statValue { font-size: 28px; }
+}
+
+
+/* --- Back-office mobile V2: dedicated mobile lists --- */
+.adminMobileList { display: none; }
+.adminDesktopTable { min-width: 0; }
+
+@media (max-width: 760px) {
+  .adminDesktopTable { display: none !important; }
+  .adminMobileList { display: grid; gap: 12px; }
+  .adminMobileCard {
+    display: grid; gap: 14px; width: 100%; min-width: 0; padding: 16px;
+    border: 1px solid rgba(212,175,55,.18); border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025));
+    color: #f7f1e4; text-decoration: none; box-shadow: 0 14px 38px rgba(0,0,0,.16);
+  }
+  .adminMobileCardTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .adminMobileCardTop strong { color: #fff; font-size: 16px; overflow-wrap: anywhere; }
+  .adminMobileCardTop span { color: rgba(247,241,228,.52); font-size: 11px; text-align: right; }
+  .adminMobileMain { display: grid; gap: 3px; min-width: 0; }
+  .adminMobileMain strong { color: #fff; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+  .adminMobileMain span { color: rgba(247,241,228,.5); font-size: 11px; overflow-wrap: anywhere; }
+  .adminMobileProductRow { display: grid; grid-template-columns: 58px minmax(0,1fr); gap: 12px; align-items: center; }
+  .adminMobileProductRow .thumb { width: 58px; height: 58px; }
+  .adminMobileMetaGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+  .adminMobileMetaGrid > span { display: grid; gap: 4px; min-width: 0; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.04); }
+  .adminMobileMetaGrid small { color: rgba(247,241,228,.48); font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }
+  .adminMobileMetaGrid strong { color: #f7f1e4; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+  .adminMobileOpen { display: block; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.07); color: #f4d77d; font-size: 12px; font-weight: 950; text-decoration: none; }
+  .adminMobileActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .adminMobileActions .adminMobileOpen { padding: 11px; border: 1px solid rgba(212,175,55,.18); border-radius: 12px; text-align: center; }
+  .card:has(> .adminDesktopTable) { overflow: visible; }
+}
+
+@media (max-width: 420px) {
+  .adminMobileMetaGrid { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* === Commandes — barre de filtres premium === */
+.filters {
+  display: grid;
+  grid-template-columns: minmax(280px, 2fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin: 0;
+  padding: 0;
+}
+
+.filter {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(247, 241, 228, 0.72);
+}
+
+.filter:hover {
+  border-color: transparent;
+  background: transparent;
+  color: rgba(247, 241, 228, 0.72);
+}
+
+.filter > span {
+  display: block;
+  padding-left: 2px;
+  color: rgba(247, 241, 228, 0.58);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filter input,
+.filter select {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(247, 241, 228, 0.14);
+  border-radius: 14px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.045);
+  color: #f7f1e4;
+  font: inherit;
+  font-weight: 750;
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.filter input::placeholder {
+  color: rgba(247, 241, 228, 0.35);
+}
+
+.filter input:hover,
+.filter select:hover {
+  border-color: rgba(212, 175, 55, 0.34);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.filter input:focus,
+.filter select:focus {
+  border-color: rgba(212, 175, 55, 0.72);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.10);
+}
+
+.filter select option {
+  color: #111;
+  background: #fff;
+}
+
+.filters .formActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.filters .actionBtn,
+.filters .buttonSecondary {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 14px;
+  padding-inline: 18px;
+}
+
+@media (max-width: 980px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filters .filter:first-of-type {
+    grid-column: 1 / -1;
+  }
+
+  .filters .formActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .filters {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .filters .filter:first-of-type,
+  .filters .formActions {
+    grid-column: auto;
+  }
+
+  .filters .formActions {
+    width: 100%;
+  }
+
+  .filters .formActions > * {
+    flex: 1;
+  }
+}

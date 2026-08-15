@@ -1,0 +1,2 @@
+"use client";import { useCart } from "@/components/cart/CartProvider";import type { Product } from "@/lib/products";import { useRouter } from "next/navigation";
+export default function NegotiatedOfferPurchase({product,token,price}:{product:Product;token:string;price:number}){const {addNegotiated}=useCart();const r=useRouter();return <button className="btn btn-gold" onClick={()=>{addNegotiated({...product,price},token);r.push("/panier")}}>Acheter à {price.toFixed(2)} CHF</button>}

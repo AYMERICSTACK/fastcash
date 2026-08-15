@@ -14,6 +14,7 @@ export const runtime = "nodejs";
 type CheckoutItem = {
   id: number | string;
   quantity: number;
+  offerToken?: string;
 };
 
 function sanitizeQuantity(quantity: unknown) {
@@ -60,6 +61,15 @@ export async function POST(req: Request) {
         const staticProduct = dbProduct ? null : products.find((candidate) => String(candidate.id) === rawId);
         const product = dbProduct ? toCatalogProduct(dbProduct) : staticProduct;
         const quantity = sanitizeQuantity(item.quantity);
+        let negotiatedPrice: number | null = null;
+        let validOfferToken: string | null = null;
+        if (item.offerToken && dbProduct) {
+          const offer = await prisma.productOffer.findUnique({ where: { purchaseToken: String(item.offerToken) } });
+          if (offer && offer.productId === dbProduct.id && offer.negotiatedPrice && !offer.usedAt && offer.tokenExpiresAt && offer.tokenExpiresAt > new Date() && ["ACCEPTED", "COUNTERED"].includes(offer.status)) {
+            negotiatedPrice = offer.negotiatedPrice;
+            validOfferToken = offer.purchaseToken;
+          }
+        }
 
         if (!product || product.price <= 0) return { product: null, quantity, error: "Produit introuvable" };
         if (product.stock <= 0) return { product, quantity, error: `${product.name} est en rupture de stock.` };
@@ -71,7 +81,7 @@ export async function POST(req: Request) {
           };
         }
 
-        return { product, quantity, error: null };
+        return { product: negotiatedPrice !== null ? { ...product, price: negotiatedPrice } : product, quantity, error: null, offerToken: validOfferToken };
       }),
     );
 
@@ -82,6 +92,7 @@ export async function POST(req: Request) {
       product: Product;
       quantity: number;
       error: null;
+      offerToken?: string | null;
     }[];
 
     if (!checkoutItems.length) return NextResponse.json({ error: "Panier vide" }, { status: 400 });
@@ -161,6 +172,7 @@ export async function POST(req: Request) {
         coupon_code: coupon?.code || "",
         coupon_discount_chf: String(coupon?.discountCHF || 0),
         items: checkoutItems.map(({ product, quantity }) => `${product.id}:${quantity}`).join(","),
+        offer_tokens: checkoutItems.map((item) => item.offerToken || "").filter(Boolean).join(","),
       },
       return_url: `${origin}/merci?provider=stripe&session_id={CHECKOUT_SESSION_ID}`,
     }, checkoutAttemptId ? { idempotencyKey: `fastcash-embedded-${checkoutAttemptId}` } : undefined);

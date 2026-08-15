@@ -92,7 +92,8 @@ export default async function AdminInventoryPage() {
               </div>
             </div>
           ) : (
-            <table className={styles.table}>
+            <>
+            <div className={styles.adminDesktopTable}><table className={styles.table}>
               <thead>
                 <tr>
                   <th>Produit</th>
@@ -129,7 +130,24 @@ export default async function AdminInventoryPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
+            <div className={styles.adminMobileList}>
+              {products.map((product) => (
+                <Link key={product.id} href={`/pilotage/produits/${product.id}`} className={styles.adminMobileCard}>
+                  <div className={styles.adminMobileProductRow}>
+                    {product.image ? <Image src={product.image} alt="" width={58} height={58} className={styles.thumb} /> : <span className={styles.thumb} />}
+                    <div className={styles.adminMobileMain}><strong>{product.name}</strong><span>{product.active ? "Visible boutique" : "Produit masqué"}</span></div>
+                  </div>
+                  <div className={styles.adminMobileMetaGrid}>
+                    <span><small>Catégorie</small><strong>{product.category?.name || "—"}</strong></span>
+                    <span><small>Stock</small><strong>{getStockLabel(product.stock, settings.lowStockThreshold)}</strong></span>
+                    <span><small>Valeur</small><strong>{formatAdminPrice(product.price * Math.max(product.stock, 0), settings.defaultCurrency)}</strong></span>
+                  </div>
+                  <span className={styles.adminMobileOpen}>Corriger le produit →</span>
+                </Link>
+              ))}
+            </div>
+            </>
           )}
         </section>
 

@@ -119,9 +119,30 @@ export default async function AdminProductsPage({
 
       <section className={styles.card}>
         {products.length === 0 ? <div className={styles.placeholder}><div><h3>Aucun produit trouvé</h3><p>Modifiez ou réinitialisez les filtres.</p></div></div> : (
-          <table className={styles.table}><thead><tr><th>Produit</th><th>Catégorie</th><th>Marque</th><th>Référence</th><th>Stock</th><th>Prix</th><th>Statut</th></tr></thead><tbody>
-          {products.map((product) => <tr key={product.id}><td><Link href={`/admin/products/${product.id}`} className={styles.productCell}>{product.image ? <Image src={product.image} alt="" width={46} height={46} className={styles.thumb} /> : <span className={styles.thumb} />}<span className={styles.stacked}><strong>{product.name}</strong><span>{product.slug}</span></span></Link></td><td>{product.category?.name || "—"}</td><td>{product.brand?.name || "—"}</td><td>{product.reference || product.prestashopId || "—"}</td><td><span className={styles.stockValue}>{product.stock}</span></td><td>{formatAdminPrice(product.price, settings.defaultCurrency)}</td><td><span className={styles.status}>{getStockLabel(product.stock, settings.lowStockThreshold)}</span></td></tr>)}
-          </tbody></table>
+          <>
+          <div className={styles.adminDesktopTable}>
+            <table className={styles.table}><thead><tr><th>Produit</th><th>Catégorie</th><th>Marque</th><th>Référence</th><th>Stock</th><th>Prix</th><th>Statut</th></tr></thead><tbody>
+            {products.map((product) => <tr key={product.id}><td><Link href={`/pilotage/produits/${product.id}`} className={styles.productCell}>{product.image ? <Image src={product.image} alt="" width={46} height={46} className={styles.thumb} /> : <span className={styles.thumb} />}<span className={styles.stacked}><strong>{product.name}</strong><span>{product.slug}</span></span></Link></td><td>{product.category?.name || "—"}</td><td>{product.brand?.name || "—"}</td><td>{product.reference || product.prestashopId || "—"}</td><td><span className={styles.stockValue}>{product.stock}</span></td><td>{formatAdminPrice(product.price, settings.defaultCurrency)}</td><td><span className={styles.status}>{getStockLabel(product.stock, settings.lowStockThreshold)}</span></td></tr>)}
+            </tbody></table>
+          </div>
+          <div className={styles.adminMobileList}>
+            {products.map((product) => (
+              <Link key={product.id} href={`/pilotage/produits/${product.id}`} className={styles.adminMobileCard}>
+                <div className={styles.adminMobileProductRow}>
+                  {product.image ? <Image src={product.image} alt="" width={58} height={58} className={styles.thumb} /> : <span className={styles.thumb} />}
+                  <div className={styles.adminMobileMain}><strong>{product.name}</strong><span>{product.reference || product.prestashopId || product.slug}</span></div>
+                </div>
+                <div className={styles.adminMobileMetaGrid}>
+                  <span><small>Catégorie</small><strong>{product.category?.name || "—"}</strong></span>
+                  <span><small>Marque</small><strong>{product.brand?.name || "—"}</strong></span>
+                  <span><small>Stock</small><strong>{product.stock}</strong></span>
+                  <span><small>Prix</small><strong>{formatAdminPrice(product.price, settings.defaultCurrency)}</strong></span>
+                </div>
+                <span className={styles.adminMobileOpen}>Modifier le produit →</span>
+              </Link>
+            ))}
+          </div>
+          </>
         )}
       </section>
 

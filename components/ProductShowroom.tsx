@@ -5,6 +5,8 @@ import { useState } from "react";
 import { CreditCard, ShieldCheck, Store } from "lucide-react";
 import CurrencyPrice from "@/components/currency/CurrencyPrice";
 import AddToCartButton from "@/components/cart/AddToCartButton";
+import FavoriteButton from "@/components/FavoriteButton";
+import OfferButton from "@/components/OfferButton";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/lib/products";
 import { getStockLabel, getStockStatus } from "@/lib/stock";
@@ -175,6 +177,7 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
           <p className="muted premium-product-description">{copy.description}</p>
 
           <AddToCartButton product={product} />
+          <div className="product-negotiation-actions"><OfferButton product={product} /><FavoriteButton productId={product.id} /></div>
         </aside>
       </div>
 

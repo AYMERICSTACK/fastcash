@@ -175,6 +175,7 @@ function CartPageContent() {
           items: items.map((item) => ({
             id: item.product.id,
             quantity: item.quantity,
+            offerToken: item.offerToken || undefined,
           })),
           currency,
           shippingMethod,

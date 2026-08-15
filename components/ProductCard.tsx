@@ -6,6 +6,7 @@ import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Product } from "@/lib/products";
 import CurrencyPrice from "@/components/currency/CurrencyPrice";
 import AddToCartButton from "./cart/AddToCartButton";
+import FavoriteButton from "@/components/FavoriteButton";
 import { translateCategoryName, useI18n } from "@/lib/i18n";
 import { getStockLabel, getStockStatus } from "@/lib/stock";
 
@@ -29,6 +30,7 @@ export default function ProductCard({ product }: { product: Product }) {
     <article className="product-card premium-product-card">
       <Link href={productHref} className="product-img premium-product-img" aria-label={`${locale === "en" ? "View" : "Voir"} ${product.name}`}>
         <span className={`premium-product-badge premium-product-badge-${stockStatus}`}>{condition}</span>
+        <div className="product-card-favorite"><FavoriteButton productId={product.id} compact /></div>
         {product.image ? <Image src={product.image} alt={product.name} width={520} height={520} /> : null}
       </Link>
 

@@ -142,7 +142,8 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
         {filteredOrders.length === 0 ? (
           <div className={styles.placeholder}><div><h3>Aucune commande trouvée</h3><p>Modifiez les filtres ou attendez l’arrivée de nouvelles commandes.</p></div></div>
         ) : (
-          <div className={styles.tableScroll}>
+          <>
+          <div className={`${styles.tableScroll} ${styles.adminDesktopTable}`}>
             <table className={styles.table}>
               <thead><tr><th>Commande</th><th>Client</th><th>Date</th><th>Paiement</th><th>Statut</th><th>Réception</th><th>Total</th><th></th></tr></thead>
               <tbody>{filteredOrders.map((order) => (
@@ -159,6 +160,28 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
               ))}</tbody>
             </table>
           </div>
+          <div className={styles.adminMobileList}>
+            {filteredOrders.map((order) => (
+              <Link key={order.id} href={`/pilotage/commandes/${order.id}`} className={styles.adminMobileCard}>
+                <div className={styles.adminMobileCardTop}>
+                  <strong>{order.orderNumber}</strong>
+                  <span>{formatAdminDate(order.createdAt)}</span>
+                </div>
+                <div className={styles.adminMobileMain}>
+                  <strong>{getCustomerName(order.customer)}</strong>
+                  <span>{order.customer.email}</span>
+                </div>
+                <div className={styles.adminMobileMetaGrid}>
+                  <span><small>Paiement</small><strong>{getPaymentStatusLabel(order.payment?.status)}</strong></span>
+                  <span><small>Statut</small><strong>{getOrderStatusLabel(order.status)}</strong></span>
+                  <span><small>Réception</small><strong>{getReceptionLabel(order.shipment?.carrier, settings.defaultCarrier)}</strong></span>
+                  <span><small>Total</small><strong>{formatAdminPrice(order.total, order.currency || settings.defaultCurrency)}</strong></span>
+                </div>
+                <span className={styles.adminMobileOpen}>Ouvrir la commande →</span>
+              </Link>
+            ))}
+          </div>
+          </>
         )}
       </section>
     </AdminShell>

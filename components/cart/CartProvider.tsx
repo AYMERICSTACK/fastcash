@@ -5,7 +5,7 @@ import { Product } from "@/lib/products";
 import { clampQuantityToStock, isProductAvailable } from "@/lib/stock";
 
 type CartProductId = string | number;
-type Item = { product: Product; quantity: number };
+type Item = { product: Product; quantity: number; offerToken?: string };
 
 type CartContextType = {
   items: Item[];
@@ -13,6 +13,7 @@ type CartContextType = {
   total: number;
   hydrated: boolean;
   add: (p: Product) => void;
+  addNegotiated: (p: Product, offerToken: string) => void;
   remove: (id: CartProductId) => void;
   clear: () => void;
   setQty: (id: CartProductId, qty: number) => void;
@@ -38,7 +39,7 @@ function sanitizeStoredItems(value: unknown): Item[] {
     const quantity = clampQuantityToStock(Number(item.quantity) || 1, Number(product.stock) || 0);
     if (quantity < 1) return [];
 
-    return [{ product, quantity }];
+    return [{ product, quantity, offerToken: typeof item.offerToken === "string" ? item.offerToken : undefined }];
   });
 }
 
@@ -84,6 +85,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
           return [...currentItems, { product, quantity: 1 }];
         }),
+      addNegotiated: (product: Product, offerToken: string) =>
+        setItems((currentItems) => [
+          ...currentItems.filter((item) => !sameProductId(item.product.id, product.id)),
+          { product, quantity: 1, offerToken },
+        ]),
       remove: (id: CartProductId) =>
         setItems((currentItems) => currentItems.filter((item) => !sameProductId(item.product.id, id))),
       clear: () => setItems([]),
