@@ -1,0 +1,12 @@
+"use client";
+import Image from "next/image";
+import { useRef, useState } from "react";
+import styles from "../admin.module.css";
+
+type Asset = { id: string; url: string; fileName: string; width: number | null; height: number | null; bytes: number | null; _count: { products: number } };
+export default function MediaLibrary({ initialAssets }: { initialAssets: Asset[] }) {
+  const [assets, setAssets] = useState(initialAssets); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); const inputRef = useRef<HTMLInputElement>(null);
+  async function upload(files: FileList) { setBusy(true); const form = new FormData(); Array.from(files).forEach((file) => form.append("files", file)); const res = await fetch("/api/admin/media", { method: "POST", body: form }); const data = await res.json(); setBusy(false); if (!res.ok) return setMessage(data.error); setAssets((current) => data.assets.map((asset: Asset) => ({ ...asset, _count: { products: 0 } })).concat(current)); setMessage(`${data.assets.length} média(s) importé(s).`); }
+  async function remove(asset: Asset) { if (asset._count.products) return; if (!confirm("Supprimer définitivement ce média de Cloudinary ?")) return; const res = await fetch(`/api/admin/media/${asset.id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok) return setMessage(data.error); setAssets((current) => current.filter((item) => item.id !== asset.id)); }
+  return <div><div className={styles.mediaToolbar}><div><h2 className={styles.sectionTitle}>Médiathèque</h2><p className={styles.formNote}>{assets.length} média(s) disponibles.</p></div><button className={styles.button} disabled={busy} onClick={() => inputRef.current?.click()}>Importer</button><input ref={inputRef} className={styles.hiddenInput} type="file" multiple accept="image/*" onChange={(e) => e.target.files && upload(e.target.files)} /></div>{message ? <p className={styles.mediaMessage}>{message}</p> : null}<div className={styles.libraryGrid}>{assets.map((asset) => <article key={asset.id}><Image src={asset.url} alt={asset.fileName} width={300} height={300}/><strong>{asset.fileName}</strong><small>{asset.width && asset.height ? `${asset.width} × ${asset.height}` : "Dimensions inconnues"}{asset.bytes ? ` · ${(asset.bytes / 1024 / 1024).toFixed(1)} Mo` : ""}</small><span>{asset._count.products} produit(s)</span><button type="button" disabled={busy || asset._count.products > 0} onClick={() => remove(asset)}>{asset._count.products ? "Utilisé" : "Supprimer"}</button></article>)}</div></div>;
+}

@@ -1,0 +1,9 @@
+ALTER TABLE "Payment"
+ADD COLUMN "webhookToken" TEXT,
+ADD COLUMN "providerData" JSONB,
+ADD COLUMN "confirmedAt" TIMESTAMP(3),
+ADD COLUMN "deliveredAt" TIMESTAMP(3),
+ADD COLUMN "refundedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE UNIQUE INDEX "Payment_webhookToken_key" ON "Payment"("webhookToken");

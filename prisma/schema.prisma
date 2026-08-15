@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  password  String?
+  orders    Order[]
+  addresses Address[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String?
+  line1      String
+  line2      String?
+  postalCode String?
+  city       String
+  country    String
+  createdAt  DateTime @default(now())
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  prestashopId Int?       @unique
+  name         String
+  slug         String     @unique
+  active       Boolean    @default(true)
+  position     Int        @default(0)
+  parentId     String?
+  parent       Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Category[] @relation("CategoryTree")
+  products     Product[]
+  productLinks ProductCategory[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([parentId])
+}
+
+model Brand {
+  id           String    @id @default(cuid())
+  prestashopId Int?      @unique
+  name         String
+  slug         String    @unique
+  active       Boolean   @default(true)
+  products     Product[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([prestashopId])
+}
+
+model Product {
+  id           String      @id @default(cuid())
+  prestashopId Int?       @unique
+  name         String
+  slug         String      @unique
+  reference    String?
+  description  String?
+  descriptionShort String?
+  metaTitle    String?
+  metaDescription String?
+  metaKeywords String?
+  prestashopCreatedAt DateTime?
+  prestashopUpdatedAt DateTime?
+  image        String?
+  price        Float
+  stock        Int         @default(0)
+  active       Boolean     @default(true)
+  categoryId   String?
+  category     Category?   @relation(fields: [categoryId], references: [id])
+  categoryLinks ProductCategory[]
+  brandId      String?
+  brand        Brand?      @relation(fields: [brandId], references: [id])
+  orderItems   OrderItem[]
+  media        ProductMedia[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([slug])
+  @@index([prestashopId])
+  @@index([categoryId])
+  @@index([brandId])
+}
+
+model ProductCategory {
+  productId   String
+  categoryId  String
+  position    Int      @default(0)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
+}
+
+model MediaAsset {
+  id        String         @id @default(cuid())
+  url       String
+  publicId  String?        @unique
+  fileName  String
+  mimeType  String?
+  format    String?
+  width     Int?
+  height    Int?
+  bytes     Int?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  products  ProductMedia[]
+
+  @@index([createdAt])
+}
+
+model ProductMedia {
+  id        String     @id @default(cuid())
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  alt       String?
+  position  Int        @default(0)
+  isPrimary Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([productId, mediaId])
+  @@index([productId, position])
+  @@index([mediaId])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  total       Float
+  currency    String      @default("CHF")
+  status      OrderStatus @default(PENDING)
+  items       OrderItem[]
+  payment     Payment?
+  shipment    Shipment?
+  invoice     Invoice?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  name      String
+  quantity  Int
+  price     Float
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider  String
+  status    String
+  amount    Float
+  reference String?
+  webhookToken String? @unique
+  providerData Json?
+  confirmedAt DateTime?
+  deliveredAt DateTime?
+  refundedAmount Float @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Shipment {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier    String?
+  trackingNo String?
+  status           String    @default("PENDING")
+  readyAt          DateTime?
+  readyEmailSentAt DateTime?
+  shippedAt         DateTime?
+  shippedEmailSentAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  number    String   @unique
+  amount    Float
+  pdfUrl    String?
+  createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  type      String
+  value     Float
+  active    Boolean  @default(true)
+  startsAt  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String
+  label     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EMPLOYEE
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY_FOR_PICKUP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
