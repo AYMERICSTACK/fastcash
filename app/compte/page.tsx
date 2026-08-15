@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, FileText, MapPin, Package, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, FileText, Heart, MapPin, Package, ShieldCheck, UserRound } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/session";
 import { formatAdminPrice } from "@/lib/admin-data";
@@ -65,6 +65,10 @@ export default async function AccountPage() {
     );
   }
 
+  const favoritesCount = await prisma.favorite.count({
+    where: { customerId: customer.id },
+  });
+
   const orders = customer.orders;
   const invoicesCount = orders.filter((order: { invoice?: { id: string } | null }) => order.invoice).length;
   const lastOrder = orders[0];
@@ -127,6 +131,12 @@ export default async function AccountPage() {
               <strong>{customer.addresses.length} adresse{customer.addresses.length > 1 ? "s" : ""}</strong>
               <p>Adresses enregistrées pour livraison et facturation.</p>
               <small>Adresses <ArrowRight size={15} /></small>
+            </Link>
+            <Link href="/compte/favoris" className="account-card">
+              <span><Heart size={24} /></span>
+              <strong>{favoritesCount} favori{favoritesCount > 1 ? "s" : ""}</strong>
+              <p>Retrouvez les articles que vous avez sélectionnés.</p>
+              <small>Mes favoris <ArrowRight size={15} /></small>
             </Link>
           </div>
 

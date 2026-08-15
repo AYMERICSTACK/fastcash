@@ -25,7 +25,11 @@ export default function CustomerRegisterPage() {
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) throw new Error(result.message || "Création du compte impossible.");
-      router.push("/compte");
+      const next =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("next")
+          : null;
+      router.push(next && next.startsWith("/") ? next : "/compte");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Création du compte impossible.");
@@ -59,7 +63,20 @@ export default function CustomerRegisterPage() {
               {message ? <p className="account-login-message account-login-message-error">{message}</p> : null}
               <button className="btn btn-gold" type="submit" disabled={loading}>{loading ? "Création..." : "Créer mon compte"} <ArrowRight size={17} /></button>
             </form>
-            <div className="account-login-links"><Link href="/compte/login">J'ai déjà un compte</Link></div>
+            <div className="account-login-links">
+              <Link
+                href={
+                  typeof window !== "undefined" &&
+                  new URLSearchParams(window.location.search).get("next")
+                    ? `/compte/login?next=${encodeURIComponent(
+                        new URLSearchParams(window.location.search).get("next") || "/compte",
+                      )}`
+                    : "/compte/login"
+                }
+              >
+                J&apos;ai déjà un compte
+              </Link>
+            </div>
           </div>
         </div>
       </section>

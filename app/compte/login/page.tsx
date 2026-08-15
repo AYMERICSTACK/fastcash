@@ -25,7 +25,11 @@ export default function CustomerLoginPage() {
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok) throw new Error(result.message || "Connexion impossible.");
-      router.push("/compte");
+      const next =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("next")
+          : null;
+      router.push(next && next.startsWith("/") ? next : "/compte");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Connexion impossible.");
@@ -72,7 +76,18 @@ export default function CustomerLoginPage() {
 
             <div className="account-login-links">
               <Link href="/compte/mot-de-passe-oublie">Mot de passe oublié ?</Link>
-              <Link href="/compte/inscription">Créer un compte</Link>
+              <Link
+                href={
+                  typeof window !== "undefined" &&
+                  new URLSearchParams(window.location.search).get("next")
+                    ? `/compte/inscription?next=${encodeURIComponent(
+                        new URLSearchParams(window.location.search).get("next") || "/compte",
+                      )}`
+                    : "/compte/inscription"
+                }
+              >
+                Créer un compte
+              </Link>
             </div>
           </div>
         </div>
