@@ -316,6 +316,51 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
         }}
       >
           <div className="container luxe-mobile-inner">
+            <div
+              className="luxe-mobile-settings"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: "14px 18px",
+                marginBottom: 14,
+                border: "1px solid rgba(213, 170, 35, 0.35)",
+                borderRadius: 18,
+                background: "rgba(15, 15, 15, 0.96)",
+              }}
+            >
+              <div style={{ display: "grid", gap: 6 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "#d5aa23",
+                  }}
+                >
+                  {locale === "en" ? "Currency" : "Devise"}
+                </span>
+                <CurrencySwitcher />
+              </div>
+
+              <div style={{ display: "grid", gap: 6 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "#d5aa23",
+                  }}
+                >
+                  {locale === "en" ? "Language" : "Langue"}
+                </span>
+                <LanguageSwitcher />
+              </div>
+            </div>
+
             <div className="luxe-mobile-card">
               <p>{dict.nav.premiumCatalog}</p>
               <Link href="/recherche" onClick={() => setOpen(false)}>{dict.nav.mobileSearch}</Link>
