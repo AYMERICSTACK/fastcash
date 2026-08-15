@@ -3903,8 +3903,12 @@ select {
 }
 
 @media (max-width: 900px) {
-  .language-switcher {
+  .luxe-topbar-left .language-switcher {
     display: none;
+  }
+
+  .luxe-mobile-preferences .language-switcher {
+    display: inline-flex;
   }
 }
 
