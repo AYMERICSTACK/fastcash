@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Menu, Search, ShoppingBag, User, Store, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "./cart/CartProvider";
 import CurrencySwitcher from "./currency/CurrencySwitcher";
 import LanguageSwitcher from "./language/LanguageSwitcher";
@@ -97,7 +97,25 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeMega, setActiveMega] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const closeMegaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobile, open]);
 
   const openMega = (href: string) => {
     if (closeMegaTimer.current) clearTimeout(closeMegaTimer.current);
@@ -117,14 +135,17 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
   };
 
   return (
+    <>
     <header className="site-header luxe-site-header">
       <div className="luxe-topbar">
         <div className="container luxe-topbar-inner">
-          <div className="luxe-topbar-left">
-            <span className="currency-label">Genève • Suisse</span>
-            <CurrencySwitcher />
-            <LanguageSwitcher />
-          </div>
+          {!isMobile ? (
+            <div className="luxe-topbar-left">
+              <span className="currency-label">Genève • Suisse</span>
+              <CurrencySwitcher />
+              <LanguageSwitcher />
+            </div>
+          ) : null}
 
           <Link href="/" className="luxe-logo" onClick={closeAllMenus}>
             <span className="luxe-logo-mark">
@@ -276,8 +297,24 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
         </div>
       </div>
 
-      {open ? (
-        <div className="luxe-mobile-panel">
+    </header>
+
+    {open && isMobile ? (
+      <div
+        className="luxe-mobile-panel"
+        style={{
+          position: "fixed",
+          top: 72,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          zIndex: 999,
+          overflowX: "hidden",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+        }}
+      >
           <div className="container luxe-mobile-inner">
             <div className="luxe-mobile-card">
               <p>{dict.nav.premiumCatalog}</p>
@@ -313,6 +350,6 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
           </div>
         </div>
       ) : null}
-    </header>
+    </>
   );
 }
