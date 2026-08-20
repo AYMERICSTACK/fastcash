@@ -1,3 +1,7 @@
+"use client";
+
+import { useShopSettings } from "@/components/settings/ShopSettingsProvider";
+
 type SocialLinksProps = {
   className?: string;
   compact?: boolean;
@@ -42,7 +46,7 @@ export default function SocialLinks({
   showLabels = false,
   onNavigate,
 }: SocialLinksProps) {
-  const instagramUrl = process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim();
+  const instagramUrl = useShopSettings().instagramUrl?.trim();
 
   if (!instagramUrl) return null;
 

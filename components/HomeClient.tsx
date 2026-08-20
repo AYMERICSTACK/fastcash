@@ -9,6 +9,7 @@ import type { Product } from "@/lib/products";
 import type { PublicCategory } from "@/lib/public-categories";
 import type { GoogleBusinessReviewsData } from "@/lib/google-business-reviews";
 import { useI18n } from "@/lib/i18n";
+import { useShopSettings } from "@/components/settings/ShopSettingsProvider";
 
 const categoryCardMeta: Record<string, string> = {
   montres: "Rolex • Omega • Cartier",
@@ -68,6 +69,7 @@ export default function HomeClient({
   googleReviews: GoogleBusinessReviewsData | null;
 }) {
   const { locale, dict } = useI18n();
+  const settings = useShopSettings();
   const meta = locale === "en" ? categoryCardMetaEn : categoryCardMeta;
   const visibleCategories = sortHomeCategories(categories).slice(0, 12);
 
@@ -76,14 +78,14 @@ export default function HomeClient({
       <section className="home-hero-luxury home-hero-general">
         <div className="container home-hero-grid">
           <div className="home-hero-copy">
-            <p className="hero-kicker">{dict.home.kicker}</p>
+            <p className="hero-kicker">{locale === "en" ? settings.heroKickerEn : settings.heroKickerFr}</p>
 
             <h1>
-              <span>{dict.home.title1}</span>
-              <span>{dict.home.title2}</span>
+              <span>{locale === "en" ? settings.heroTitle1En : settings.heroTitle1Fr}</span>
+              <span>{locale === "en" ? settings.heroTitle2En : settings.heroTitle2Fr}</span>
             </h1>
 
-            <p>{dict.home.intro}</p>
+            <p>{locale === "en" ? settings.heroIntroEn : settings.heroIntroFr}</p>
 
             <div className="hero-actions">
               <Link href="/estimation" className="btn btn-gold">{dict.home.estimateCta}</Link>
@@ -91,15 +93,15 @@ export default function HomeClient({
             </div>
 
             <div className="hero-proof" aria-label="FAST CASH guarantees">
-              <span>{dict.home.proof1}</span>
-              <span>{dict.home.proof2}</span>
-              <span>{dict.home.proof3}</span>
+              <span>{locale === "en" ? settings.heroProof1En : settings.heroProof1Fr}</span>
+              <span>{locale === "en" ? settings.heroProof2En : settings.heroProof2Fr}</span>
+              <span>{locale === "en" ? settings.heroProof3En : settings.heroProof3Fr}</span>
             </div>
           </div>
 
           <div className="home-hero-visual">
             <Image
-              src="/images/hero/fastcash-luxury-hero.jpg"
+              src={settings.heroImage}
               alt="Montres, Apple, maroquinerie et bijoux"
               width={1200}
               height={700}

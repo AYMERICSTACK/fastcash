@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import LegalPage from "@/components/legal/LegalPage";
-import { legalConfig } from "@/lib/legal-config";
+import { getLegalConfig } from "@/lib/legal-config";
 
 export const metadata: Metadata = { title: "Politique de confidentialité", description: "Politique de confidentialité et protection des données FAST CASH Genève.", alternates: { canonical: "/politique-confidentialite" } };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const legalConfig = await getLegalConfig();
   return <LegalPage eyebrow="Protection des données" title="Politique de confidentialité" intro="FAST CASH Genève traite vos données avec transparence, uniquement pour fournir ses services et gérer la relation client.">
     <section><h2>Données collectées</h2><p>Nous pouvons collecter les informations communiquées lors de la création d'un compte, d'une commande, d'une demande de contact ou d'une estimation : identité, coordonnées, adresse, historique de commandes et informations nécessaires au suivi de votre demande.</p></section>
     <section><h2>Finalités</h2><p>Ces données sont utilisées pour gérer les comptes clients, traiter les commandes, organiser le retrait ou l'expédition, émettre les factures, répondre aux demandes, prévenir la fraude et respecter nos obligations légales.</p></section>

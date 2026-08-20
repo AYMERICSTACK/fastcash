@@ -3,31 +3,33 @@
 import Link from "next/link";
 import ContactForm from "@/components/ContactForm";
 import { useI18n } from "@/lib/i18n";
+import { useShopSettings } from "@/components/settings/ShopSettingsProvider";
 
 export default function ContactPageContent() {
   const { dict } = useI18n();
   const copy = dict.contact;
+  const settings = useShopSettings();
 
   const contactCards = [
     {
       label: copy.cards.store.label,
       title: copy.cards.store.title,
-      text: copy.cards.store.text,
-      href: "https://www.google.com/maps/search/?api=1&query=Rue%20de%20Monthoux%2027%201201%20Gen%C3%A8ve",
+      text: `${settings.addressLine1}, ${settings.postalCode} ${settings.city}`,
+      href: settings.mapsUrl,
       action: copy.cards.store.action,
     },
     {
       label: copy.cards.phone.label,
-      title: copy.cards.phone.title,
+      title: settings.phoneDisplay,
       text: copy.cards.phone.text,
-      href: "tel:+41227311663",
+      href: `tel:${settings.phoneHref}`,
       action: copy.cards.phone.action,
     },
     {
       label: copy.cards.email.label,
-      title: copy.cards.email.title,
+      title: settings.publicEmail,
       text: copy.cards.email.text,
-      href: "mailto:contact@fastcash-geneve.ch",
+      href: `mailto:${settings.publicEmail}`,
       action: copy.cards.email.action,
     },
   ];
@@ -41,7 +43,7 @@ export default function ContactPageContent() {
             <h1 className="title-lg">{copy.title}</h1>
             <p className="muted">{copy.intro}</p>
             <div className="contact-hero-actions">
-              <Link href="tel:+41227311663" className="btn btn-gold">
+              <Link href={`tel:${settings.phoneHref}`} className="btn btn-gold">
                 {copy.callStore}
               </Link>
               <Link href="/estimation" className="btn btn-light">
@@ -52,10 +54,10 @@ export default function ContactPageContent() {
 
           <div className="contact-store-card" aria-label={copy.storeLabel}>
             <span>{copy.storeLabel}</span>
-            <strong>{copy.addressLine1}</strong>
-            <p>{copy.addressLine2}</p>
+            <strong>{settings.addressLine1}</strong>
+            <p>{settings.postalCode} {settings.city}</p>
             <div className="contact-store-divider" />
-            <a href="tel:+41227311663">+41 22 731 16 63</a>
+            <a href={`tel:${settings.phoneHref}`}>+41 22 731 16 63</a>
             <small>{copy.storeSmall}</small>
           </div>
         </div>
@@ -95,10 +97,10 @@ export default function ContactPageContent() {
               <p className="hero-kicker">{copy.hoursKicker}</p>
               <h2>{copy.hoursTitle}</h2>
               <div className="contact-hours-list">
-                {copy.hours.map(([day, time]) => (
-                  <div key={day}>
-                    <span>{day}</span>
-                    <strong>{time}</strong>
+                {settings.hours.map((item) => (
+                  <div key={item.key}>
+                    <span>{item.fr}</span>
+                    <strong>{item.time}</strong>
                   </div>
                 ))}
               </div>
@@ -116,7 +118,7 @@ export default function ContactPageContent() {
               <p className="muted">{copy.mapText}</p>
             </div>
             <a
-              href="https://www.google.com/maps/search/?api=1&query=Rue%20de%20Monthoux%2027%201201%20Gen%C3%A8ve"
+              href={settings.mapsUrl}
               target="_blank"
               rel="noreferrer"
               className="btn btn-dark"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import LegalPage from "@/components/legal/LegalPage";
-import { legalConfig } from "@/lib/legal-config";
+import { getLegalConfig } from "@/lib/legal-config";
 
 export const metadata: Metadata = {
   title: "Mentions légales",
@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/mentions-legales" },
 };
 
-export default function LegalNoticePage() {
+export default async function LegalNoticePage() {
+  const legalConfig = await getLegalConfig();
   return (
     <LegalPage eyebrow="Informations légales" title="Mentions légales" intro="Les informations essentielles concernant l'éditeur et l'exploitation de la plateforme FAST CASH Genève.">
       <section><h2>Éditeur du site</h2><p><strong>{legalConfig.businessName}</strong><br />{legalConfig.address}<br />Téléphone : <a href={`tel:${legalConfig.phone.replace(/\s/g, "")}`}>{legalConfig.phone}</a><br />Email : <a href={`mailto:${legalConfig.email}`}>{legalConfig.email}</a></p>{legalConfig.companyId ? <p>Identifiant d'entreprise : {legalConfig.companyId}</p> : null}{legalConfig.vatNumber ? <p>Numéro de TVA : {legalConfig.vatNumber}</p> : null}{legalConfig.representative ? <p>Représentant : {legalConfig.representative}</p> : null}</section>

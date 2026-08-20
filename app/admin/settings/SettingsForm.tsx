@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import styles from "../admin.module.css";
 import { useAdminToast } from "../AdminProviders";
 
-type SettingFieldType = "text" | "email" | "number" | "select" | "multiselect" | "switch";
+type SettingFieldType = "text" | "email" | "number" | "url" | "textarea" | "image" | "select" | "multiselect" | "switch";
 
 type SettingField = {
   key: string;
@@ -18,6 +18,7 @@ type SettingField = {
 
 type SettingsFormProps = {
   settings: SettingField[];
+  integrations?: ReactNode;
 };
 
 type SaveState = "idle" | "success" | "error";
@@ -33,7 +34,7 @@ function serializeMultiValue(values: string[]) {
   return values.join(" / ");
 }
 
-export default function SettingsForm({ settings }: SettingsFormProps) {
+export default function SettingsForm({ settings, integrations }: SettingsFormProps) {
   const initialValues = useMemo(
     () => Object.fromEntries(settings.map((setting) => [setting.key, setting.value])),
     [settings],
@@ -46,6 +47,8 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const toast = useAdminToast();
+  const [activeSection, setActiveSection] = useState("Boutique");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const groupedSettings = useMemo(() => {
     const groups = new Map<string, SettingField[]>();
@@ -58,6 +61,37 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
 
     return Array.from(groups.entries()).map(([group, items]) => ({ group, items }));
   }, [settings]);
+
+  const sectionMeta: Record<string, { label: string; description: string; icon: string }> = {
+    Boutique: { label: "Général", description: "Identité, devise et langues", icon: "⌂" },
+    "Coordonnées": { label: "Coordonnées", description: "Adresse, téléphone et réseaux", icon: "◎" },
+    Horaires: { label: "Horaires", description: "Heures d’ouverture", icon: "◷" },
+    Accueil: { label: "Page d’accueil", description: "Hero et contenus principaux", icon: "◇" },
+    "Informations légales": { label: "Informations légales", description: "Société, TVA et juridiction", icon: "§" },
+    Commandes: { label: "Commandes", description: "Numérotation des commandes", icon: "▣" },
+    Factures: { label: "Factures", description: "Numérotation des factures", icon: "▤" },
+    Emails: { label: "Emails", description: "Adresses opérationnelles", icon: "@" },
+    Paiements: { label: "Paiements", description: "Moyens de paiement", icon: "◈" },
+    Livraison: { label: "Livraison", description: "Retrait, frais et transporteur", icon: "→" },
+    Stock: { label: "Stock", description: "Seuils d’alerte", icon: "□" },
+  };
+
+  const activeGroup = groupedSettings.find((section) => section.group === activeSection) || groupedSettings[0];
+
+  const activeMeta =
+    activeSection === "Intégrations"
+      ? { label: "Intégrations", description: "Google Business et services", icon: "↗" }
+      : sectionMeta[activeGroup?.group] || { label: activeGroup?.group || "Paramètres", description: "", icon: "•" };
+
+  function selectSection(section: string) {
+    setActiveSection(section);
+    setMobileMenuOpen(false);
+    if (isEditing) {
+      setIsEditing(false);
+      setValues(savedValues);
+    }
+  }
+
 
   const hasChanges = useMemo(
     () => Object.keys(values).some((key) => values[key] !== savedValues[key]),
@@ -85,6 +119,21 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
     setValues((current) => ({ ...current, [key]: value }));
     setSaveState("idle");
     setMessage("");
+  }
+
+  async function uploadImage(key: string, file: File) {
+    if (!isEditing) return;
+    const form = new FormData();
+    form.append("files", file);
+    try {
+      const response = await fetch("/api/admin/media", { method: "POST", body: form });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.assets?.[0]?.url) throw new Error(payload.error || "Upload impossible.");
+      updateValue(key, payload.assets[0].url);
+      toast.success("Image importée. Enregistrez les paramètres pour l'appliquer.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload impossible.");
+    }
   }
 
   function updateMultiValue(key: string, option: string, checked: boolean) {
@@ -137,130 +186,121 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
   }
 
   return (
-    <form className={styles.settingsForm} onSubmit={handleSubmit}>
-      <div className={styles.settingsToolbar}>
-        <div>
-          <p className={styles.statLabel}>Centre de configuration</p>
-          <h2 className={styles.sectionTitle}>Settings V1 éditables</h2>
-          <p className={styles.formNote}>
-            La page reste verrouillée par défaut pour éviter les erreurs. Cliquez sur Modifier pour
-            ajuster les réglages, puis enregistrez pour revenir en lecture seule.
-          </p>
-        </div>
-        <div className={styles.formActions}>
-          {message ? (
-            <span className={saveState === "error" ? styles.formError : styles.formMessage}>
-              {message}
-            </span>
-          ) : null}
-
-          <span className={isEditing ? styles.editBadgeActive : styles.editBadge}>
-            {isEditing ? "Mode édition actif" : "Lecture seule"}
+    <div className={styles.settingsForm}>
+      <div className={styles.settingsMobileSectionPicker}>
+        <button
+          type="button"
+          className={styles.settingsMobileSectionButton}
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          <span className={styles.settingsMobileSectionIcon}>{activeMeta.icon}</span>
+          <span>
+            <small>Rubrique</small>
+            <strong>{activeMeta.label}</strong>
           </span>
+          <i>{mobileMenuOpen ? "×" : "⌄"}</i>
+        </button>
 
-          {isEditing ? (
-            <div className={styles.actionsCompact}>
-              <button className={styles.buttonSecondary} type="button" onClick={cancelEditing} disabled={isPending}>
-                Annuler
-              </button>
-              <button className={styles.button} type="submit" disabled={isPending || !hasChanges}>
-                {isPending ? "Enregistrement..." : "Enregistrer les modifications"}
-              </button>
+        {mobileMenuOpen ? (
+          <div className={styles.settingsMobileSectionMenu}>
+            <div className={styles.settingsMobileSectionMenuHead}>
+              <span>Choisir une rubrique</span>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Fermer">×</button>
             </div>
-          ) : (
-            <button className={styles.button} type="button" onClick={startEditing}>
-              Modifier les paramètres
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className={styles.settingsGrid}>
-        {groupedSettings.map((section) => (
-          <article key={section.group} className={`${styles.card} ${!isEditing ? styles.readOnlyCard : ""}`}>
-            <h3 className={styles.sectionTitle}>{section.group}</h3>
-            <div className={styles.settingsFields}>
-              {section.items.map((setting) => {
-                const currentValue = values[setting.key] || "";
-
-                if (setting.type === "switch") {
-                  const enabled = currentValue === "Actif";
-
-                  return (
-                    <label key={setting.key} className={styles.switchField}>
-                      <span>
-                        <strong>{setting.label}</strong>
-                        {setting.help ? <small>{setting.help}</small> : null}
-                      </span>
-                      <button
-                        type="button"
-                        className={`${styles.switchButton} ${enabled ? styles.switchButtonActive : ""}`}
-                        aria-pressed={enabled}
-                        disabled={!isEditing || isPending}
-                        onClick={() => updateValue(setting.key, enabled ? "Inactif" : "Actif")}
-                      >
-                        {enabled ? "Actif" : "Inactif"}
-                      </button>
-                    </label>
-                  );
-                }
-
-                if (setting.type === "multiselect") {
-                  const selected = normalizeMultiValue(currentValue);
-
-                  return (
-                    <div key={setting.key} className={styles.fieldGroup}>
-                      <span>{setting.label}</span>
-                      <div className={styles.checkGrid}>
-                        {(setting.options || []).map((option) => (
-                          <label key={option} className={styles.checkPill}>
-                            <input
-                              type="checkbox"
-                              checked={selected.includes(option)}
-                              disabled={!isEditing || isPending}
-                              onChange={(event) => updateMultiValue(setting.key, option, event.target.checked)}
-                            />
-                            {option}
-                          </label>
-                        ))}
-                      </div>
-                      {setting.help ? <small>{setting.help}</small> : null}
-                    </div>
-                  );
-                }
-
+            <div className={styles.settingsMobileSectionList}>
+              {groupedSettings.map((section) => {
+                const meta = sectionMeta[section.group] || { label: section.group, description: "", icon: "•" };
                 return (
-                  <label key={setting.key} className={styles.field}>
-                    <span>{setting.label}</span>
-                    {setting.type === "select" ? (
-                      <select
-                        value={currentValue}
-                        disabled={!isEditing || isPending}
-                        onChange={(event) => updateValue(setting.key, event.target.value)}
-                      >
-                        {(setting.options || []).map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={setting.type}
-                        min={setting.type === "number" ? 0 : undefined}
-                        value={currentValue}
-                        disabled={!isEditing || isPending}
-                        onChange={(event) => updateValue(setting.key, event.target.value)}
-                      />
-                    )}
-                    {setting.help ? <small>{setting.help}</small> : null}
-                  </label>
+                  <button
+                    key={section.group}
+                    type="button"
+                    data-active={activeSection === section.group}
+                    onClick={() => selectSection(section.group)}
+                  >
+                    <i>{meta.icon}</i>
+                    <span><strong>{meta.label}</strong><small>{meta.description}</small></span>
+                    {activeSection === section.group ? <b>✓</b> : null}
+                  </button>
                 );
               })}
+              {integrations ? (
+                <button
+                  type="button"
+                  data-active={activeSection === "Intégrations"}
+                  onClick={() => selectSection("Intégrations")}
+                >
+                  <i>↗</i>
+                  <span><strong>Intégrations</strong><small>Google Business et services</small></span>
+                  {activeSection === "Intégrations" ? <b>✓</b> : null}
+                </button>
+              ) : null}
             </div>
-          </article>
-        ))}
+          </div>
+        ) : null}
       </div>
-    </form>
+
+      <div className={styles.settingsV21Layout}>
+        <aside className={styles.settingsV21Nav}>
+          <div className={styles.settingsV21NavHead}>
+            <span>Configuration</span>
+            <strong>Paramètres</strong>
+          </div>
+          <nav>
+            {groupedSettings.map((section) => {
+              const meta = sectionMeta[section.group] || { label: section.group, description: "", icon: "•" };
+              return (
+                <button key={section.group} type="button" data-active={activeSection === section.group} onClick={() => selectSection(section.group)}>
+                  <i>{meta.icon}</i><span><strong>{meta.label}</strong><small>{meta.description}</small></span>
+                </button>
+              );
+            })}
+            {integrations ? (
+              <button type="button" data-active={activeSection === "Intégrations"} onClick={() => selectSection("Intégrations")}>
+                <i>↗</i><span><strong>Intégrations</strong><small>Google Business et services</small></span>
+              </button>
+            ) : null}
+          </nav>
+        </aside>
+
+        <main className={styles.settingsV21Content}>
+          <div className={styles.settingsV21Header}>
+            <div>
+              <p className={styles.statLabel}>{activeSection === "Intégrations" ? "Services connectés" : "Réglages boutique"}</p>
+              <h2>{activeSection === "Intégrations" ? "Intégrations" : (sectionMeta[activeGroup?.group]?.label || activeGroup?.group)}</h2>
+              <p>{activeSection === "Intégrations" ? "Gérez ici les services externes reliés à FAST CASH." : (sectionMeta[activeGroup?.group]?.description || "Modifiez les paramètres de cette section.")}</p>
+            </div>
+            {activeSection !== "Intégrations"
+              ? (!isEditing
+                  ? <button className={styles.button} type="button" onClick={startEditing}>Modifier</button>
+                  : <span className={styles.editBadgeActive}>Mode édition</span>)
+              : null}
+          </div>
+
+          {activeSection === "Intégrations" ? integrations : activeGroup ? (
+            <form id="settings-config-form" className={`${styles.settingsV21Panel} ${!isEditing ? styles.readOnlyCard : ""}`} onSubmit={handleSubmit}>
+              <div className={styles.settingsFields}>
+                {activeGroup.items.map((setting) => {
+                  const currentValue = values[setting.key] || "";
+                  if (setting.type === "switch") {
+                    const enabled = currentValue === "Actif";
+                    return <label key={setting.key} className={styles.switchField}><span><strong>{setting.label}</strong>{setting.help ? <small>{setting.help}</small> : null}</span><button type="button" className={`${styles.switchButton} ${enabled ? styles.switchButtonActive : ""}`} aria-pressed={enabled} disabled={!isEditing || isPending} onClick={() => updateValue(setting.key, enabled ? "Inactif" : "Actif")}>{enabled ? "Actif" : "Inactif"}</button></label>;
+                  }
+                  if (setting.type === "multiselect") {
+                    const selected = normalizeMultiValue(currentValue);
+                    return <div key={setting.key} className={styles.fieldGroup}><span>{setting.label}</span><div className={styles.checkGrid}>{(setting.options || []).map((option) => <label key={option} className={styles.checkPill}><input type="checkbox" checked={selected.includes(option)} disabled={!isEditing || isPending} onChange={(event) => updateMultiValue(setting.key, option, event.target.checked)} />{option}</label>)}</div>{setting.help ? <small>{setting.help}</small> : null}</div>;
+                  }
+                  if (setting.type === "image") return <div key={setting.key} className={`${styles.fieldGroup} ${styles.settingsV21ImageField}`}><span>{setting.label}</span><div className={styles.settingsImagePreview}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={currentValue} alt={setting.label} /></div><label className={styles.buttonSecondary}>Remplacer l’image<input className={styles.hiddenInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" disabled={!isEditing || isPending} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(setting.key, file); event.currentTarget.value = ""; }} /></label>{setting.help ? <small>{setting.help}</small> : null}</div>;
+                  if (setting.type === "textarea") return <label key={setting.key} className={styles.field}><span>{setting.label}</span><textarea rows={4} value={currentValue} disabled={!isEditing || isPending} onChange={(event) => updateValue(setting.key, event.target.value)} />{setting.help ? <small>{setting.help}</small> : null}</label>;
+                  return <label key={setting.key} className={styles.field}><span>{setting.label}</span>{setting.type === "select" ? <select value={currentValue} disabled={!isEditing || isPending} onChange={(event) => updateValue(setting.key, event.target.value)}>{(setting.options || []).map((option) => <option key={option} value={option}>{option}</option>)}</select> : <input type={setting.type} min={setting.type === "number" ? 0 : undefined} value={currentValue} disabled={!isEditing || isPending} onChange={(event) => updateValue(setting.key, event.target.value)} />}{setting.help ? <small>{setting.help}</small> : null}</label>;
+                })}
+              </div>
+            </form>
+          ) : null}
+        </main>
+      </div>
+
+      {isEditing ? <div className={styles.settingsV21SaveBar}><div><strong>{hasChanges ? "Modifications non enregistrées" : "Mode édition actif"}</strong><small>{hasChanges ? "Enregistrez pour appliquer vos changements à la boutique." : "Modifiez un champ pour activer l’enregistrement."}</small></div><div className={styles.actionsCompact}><button className={styles.buttonSecondary} type="button" onClick={cancelEditing} disabled={isPending}>Annuler</button><button className={styles.button} type="submit" form="settings-config-form" disabled={isPending || !hasChanges}>{isPending ? "Enregistrement..." : "Enregistrer"}</button></div></div> : null}
+    </div>
   );
 }

@@ -2,184 +2,66 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/session";
 
-const editableSettings = {
-  "shop.name": {
-    label: "Nom boutique",
-    group: "Boutique",
-    validate: (value: string) => value.trim().length >= 2,
-  },
-  "shop.currency": {
-    label: "Devise principale",
-    group: "Boutique",
-    validate: (value: string) => ["CHF", "EUR"].includes(value),
-  },
-  "shop.languages": {
-    label: "Langues actives",
-    group: "Boutique",
-    validate: (value: string) => value.split("/").map((item) => item.trim()).every((item) => ["FR", "EN"].includes(item)) && value.trim().length > 0,
-  },
-  "orders.prefix": {
-    label: "Préfixe commandes",
-    group: "Commandes",
-    validate: (value: string) => /^[A-Z0-9-]{2,12}$/.test(value.trim()),
-  },
-  "invoices.prefix": {
-    label: "Préfixe factures",
-    group: "Factures",
-    validate: (value: string) => /^[A-Z0-9-]{2,12}$/.test(value.trim()),
-  },
-  "orders.email": {
-    label: "Email commandes",
-    group: "Emails",
-    validate: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()),
-  },
-  "payments.card": {
-    label: "Paiement carte bancaire",
-    group: "Paiements",
-    validate: (value: string) => ["Actif", "Inactif"].includes(value),
-  },
-  "payments.heylight": {
-    label: "Paiement HeyLight",
-    group: "Paiements",
-    validate: (value: string) => ["Actif", "Inactif"].includes(value),
-  },
-  "shipping.pickupEnabled": {
-    label: "Retrait en boutique",
-    group: "Livraison",
-    validate: (value: string) => ["Actif", "Inactif"].includes(value),
-  },
-  "shipping.deliveryEnabled": {
-    label: "Livraison à domicile",
-    group: "Livraison",
-    validate: (value: string) => ["Actif", "Inactif"].includes(value),
-  },
-  "shipping.fee": {
-    label: "Frais de livraison",
-    group: "Livraison",
-    validate: (value: string) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 10000,
-  },
-  "shipping.freeThreshold": {
-    label: "Seuil livraison offerte",
-    group: "Livraison",
-    validate: (value: string) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 1000000,
-  },
-  "shipping.countries": {
-    label: "Pays desservis",
-    group: "Livraison",
-    validate: (value: string) => value.split("/").map((item) => item.trim()).filter(Boolean).every((item) => /^[A-Z]{2}$/.test(item)),
-  },
-  "shipping.defaultCarrier": {
-    label: "Transporteur principal",
-    group: "Livraison",
-    validate: (value: string) => value.trim().length >= 2,
-  },
-  "stock.lowThreshold": {
-    label: "Seuil stock faible",
-    group: "Stock",
-    validate: (value: string) => Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 999,
-  },
-} as const;
+const definitions: Record<string, { label: string; group: string; validate: (value: string) => boolean }> = {};
 
-type EditableSettingKey = keyof typeof editableSettings;
-
-function isEditableSettingKey(key: string): key is EditableSettingKey {
-  return key in editableSettings;
+function add(keys: string[], group: string, validate: (value: string) => boolean = (v) => v.length <= 5000) {
+  for (const key of keys) definitions[key] = { label: key, group, validate };
 }
 
-function normalizeValue(key: EditableSettingKey, value: unknown) {
-  const normalized = String(value ?? "").trim();
+add(["shop.name"], "Boutique", (v) => v.length >= 2 && v.length <= 120);
+add(["shop.currency"], "Boutique", (v) => ["CHF","EUR"].includes(v));
+add(["shop.languages"], "Boutique", (v) => v.split("/").map(x=>x.trim()).filter(Boolean).every(x=>["FR","EN"].includes(x)));
 
-  if (key === "orders.prefix" || key === "invoices.prefix") {
-    return normalized.toUpperCase();
-  }
+add(["contact.addressLine1","contact.postalCode","contact.city","contact.country","contact.phoneDisplay","contact.phoneHref"], "Coordonnées", (v) => v.length >= 1 && v.length <= 250);
+add(["contact.email"], "Coordonnées", (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+add(["contact.mapsUrl","social.instagram"], "Coordonnées", (v) => !v || /^https?:\/\//i.test(v));
 
-  if (key === "stock.lowThreshold" || key === "shipping.fee" || key === "shipping.freeThreshold") {
-    return String(Number(normalized.replace(",", ".")));
-  }
+add(["hours.monday","hours.tuesday","hours.wednesday","hours.thursday","hours.friday","hours.saturday","hours.sunday"], "Horaires", (v) => v.length >= 2 && v.length <= 80);
 
-  if (key === "shipping.countries") {
-    return normalized.split("/").map((item) => item.trim().toUpperCase()).filter(Boolean).join(" / ");
-  }
+add(["home.heroImage"], "Accueil", (v) => /^https?:\/\//i.test(v) || v.startsWith("/"));
+add(["home.heroKickerFr","home.heroKickerEn","home.heroTitle1Fr","home.heroTitle1En","home.heroTitle2Fr","home.heroTitle2En","home.heroProof1Fr","home.heroProof1En","home.heroProof2Fr","home.heroProof2En","home.heroProof3Fr","home.heroProof3En"], "Accueil", (v) => v.length >= 1 && v.length <= 180);
+add(["home.heroIntroFr","home.heroIntroEn"], "Accueil", (v) => v.length >= 10 && v.length <= 1200);
 
-  if (key === "shop.languages") {
-    return normalized
-      .split("/")
-      .map((item) => item.trim().toUpperCase())
-      .filter(Boolean)
-      .join(" / ");
-  }
+add(["legal.businessName","legal.jurisdiction","legal.lastUpdated"], "Informations légales", (v) => v.length >= 2 && v.length <= 250);
+add(["legal.companyId","legal.vatNumber","legal.representative"], "Informations légales", (v) => v.length <= 250);
 
-  return normalized;
+add(["orders.prefix"], "Commandes", (v) => /^[A-Z0-9-]{2,12}$/.test(v));
+add(["invoices.prefix"], "Factures", (v) => /^[A-Z0-9-]{2,12}$/.test(v));
+add(["orders.email"], "Emails", (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+add(["payments.card","payments.heylight"], "Paiements", (v) => ["Actif","Inactif"].includes(v));
+add(["shipping.pickupEnabled","shipping.deliveryEnabled"], "Livraison", (v) => ["Actif","Inactif"].includes(v));
+add(["shipping.fee","shipping.freeThreshold"], "Livraison", (v) => Number.isFinite(Number(v)) && Number(v) >= 0);
+add(["shipping.countries","shipping.defaultCarrier"], "Livraison", (v) => v.length >= 2 && v.length <= 250);
+add(["stock.lowThreshold"], "Stock", (v) => Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 999);
+
+function normalize(key: string, raw: unknown) {
+  let v = String(raw ?? "").trim();
+  if (["orders.prefix","invoices.prefix","shop.languages","shipping.countries"].includes(key)) v = v.toUpperCase();
+  if (["stock.lowThreshold","shipping.fee","shipping.freeThreshold"].includes(key)) v = String(Number(v.replace(",", ".")));
+  return v;
 }
 
 export async function PATCH(request: Request) {
-  const isAdmin = await getAdminSession();
-
-  if (!isAdmin) {
-    return NextResponse.json({ error: "Session administrateur requise." }, { status: 401 });
-  }
+  if (!(await getAdminSession())) return NextResponse.json({ error:"Session administrateur requise." }, { status:401 });
 
   const body = await request.json().catch(() => null);
-  const receivedSettings = body?.settings;
+  if (!body?.settings || typeof body.settings !== "object") return NextResponse.json({ error:"Paramètres invalides." }, { status:400 });
 
-  if (!receivedSettings || typeof receivedSettings !== "object") {
-    return NextResponse.json({ error: "Paramètres invalides." }, { status: 400 });
+  const updates: Array<{key:string;value:string;label:string;group:string}> = [];
+  for (const [key, raw] of Object.entries(body.settings)) {
+    const def = definitions[key];
+    if (!def) continue;
+    const value = normalize(key, raw);
+    if (!def.validate(value)) return NextResponse.json({ error:`Valeur invalide pour ${key}.` }, { status:400 });
+    updates.push({ key, value, label:def.label, group:def.group });
   }
+  if (!updates.length) return NextResponse.json({ error:"Aucun paramètre éditable reçu." }, { status:400 });
 
-  let updates: Array<{ key: EditableSettingKey; value: string; label: string; group: string }> = [];
+  await prisma.$transaction(updates.map((item) => prisma.setting.upsert({
+    where:{ key:item.key },
+    update:{ value:item.value, label:item.label, group:item.group },
+    create:item,
+  })));
 
-  try {
-    updates = Object.entries(receivedSettings)
-      .filter(([key]) => isEditableSettingKey(key))
-      .map(([key, rawValue]) => {
-        const settingKey = key as EditableSettingKey;
-        const value = normalizeValue(settingKey, rawValue);
-        const config = editableSettings[settingKey];
-
-        if (!config.validate(value)) {
-          throw new Error(`Valeur invalide pour ${config.label}.`);
-        }
-
-        return {
-          key: settingKey,
-          value,
-          label: config.label,
-          group: config.group,
-        };
-      });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Paramètre invalide." },
-      { status: 400 },
-    );
-  }
-
-  if (updates.length === 0) {
-    return NextResponse.json({ error: "Aucun paramètre éditable reçu." }, { status: 400 });
-  }
-
-  try {
-    await prisma.$transaction(
-      updates.map((setting) =>
-        prisma.setting.upsert({
-          where: { key: setting.key },
-          update: {
-            value: setting.value,
-            label: setting.label,
-            group: setting.group,
-          },
-          create: setting,
-        }),
-      ),
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Valeur invalide")) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    console.error("FAST CASH settings update error", error);
-    return NextResponse.json({ error: "Erreur lors de l'enregistrement." }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true, updated: updates.length });
+  return NextResponse.json({ ok:true, updated:updates.length });
 }

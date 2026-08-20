@@ -6,6 +6,7 @@ import CurrencySwitcher from "@/components/currency/CurrencySwitcher";
 import LanguageSwitcher from "@/components/language/LanguageSwitcher";
 import { useI18n } from "@/lib/i18n";
 import SocialLinks from "@/components/SocialLinks";
+import { useShopSettings } from "@/components/settings/ShopSettingsProvider";
 
 const categoryLinks = [
   { href: "/categories/montres", key: "watches" },
@@ -28,6 +29,7 @@ const serviceLinks = [
 export default function Footer() {
   const { dict, locale } = useI18n();
   const footer = dict.footer;
+  const settings = useShopSettings();
 
   return (
     <footer className="footer footer-premium">
@@ -52,8 +54,8 @@ export default function Footer() {
             <p className="footer-brand">{footer.brandText}</p>
 
             <address className="footer-address">
-              <span>Rue de Monthoux 27, 1201 Genève</span>
-              <a href="tel:+41227311663">+41 22 731 16 63</a>
+              <span>{settings.addressLine1}, {settings.postalCode} {settings.city}</span>
+              <a href={`tel:${settings.phoneHref}`}>{settings.phoneDisplay}</a>
             </address>
 
             <div className="footer-social-block">
@@ -101,9 +103,9 @@ export default function Footer() {
           </div>
 
           <div className="footer-hours-grid">
-            {footer.hours.map((item) => (
-              <div key={item.day}>
-                <span>{item.day}</span>
+            {settings.hours.map((item) => (
+              <div key={item.key}>
+                <span>{locale === "en" ? item.en : item.fr}</span>
                 <strong>{item.time}</strong>
               </div>
             ))}
