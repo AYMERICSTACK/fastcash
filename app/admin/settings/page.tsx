@@ -517,7 +517,6 @@ export default async function AdminSettingsPage({
                   <input
                     readOnly
                     value={query.googleInvite}
-                    onFocus={(event) => event.currentTarget.select()}
                     style={{ width: "100%", minWidth: "320px" }}
                   />
                 </div>
