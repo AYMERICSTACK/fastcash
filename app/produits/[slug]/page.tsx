@@ -163,7 +163,7 @@ export default async function ProductPage({ params }: PageProps) {
             product.stock > 0
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
-          itemCondition: "https://schema.org/UsedCondition",
+          itemCondition: product.condition === "NEW" ? "https://schema.org/NewCondition" : product.condition === "DAMAGED" ? "https://schema.org/DamagedCondition" : "https://schema.org/UsedCondition",
           seller: {
             "@id": `${siteUrl}/#store`,
           },

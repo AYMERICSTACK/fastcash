@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import FastCashBlock from "@/components/FastCashBlock";
+import GoogleReviews from "@/components/GoogleReviews";
 import type { Product } from "@/lib/products";
 import type { PublicCategory } from "@/lib/public-categories";
+import type { GoogleBusinessReviewsData } from "@/lib/google-business-reviews";
 import { useI18n } from "@/lib/i18n";
 
 const categoryCardMeta: Record<string, string> = {
@@ -59,9 +61,11 @@ function sortHomeCategories(categories: PublicCategory[]) {
 export default function HomeClient({
   featured,
   categories,
+  googleReviews,
 }: {
   featured: Product[];
   categories: PublicCategory[];
+  googleReviews: GoogleBusinessReviewsData | null;
 }) {
   const { locale, dict } = useI18n();
   const meta = locale === "en" ? categoryCardMetaEn : categoryCardMeta;
@@ -148,6 +152,7 @@ export default function HomeClient({
       </section>
 
       <FastCashBlock />
+      <GoogleReviews data={googleReviews} />
     </main>
   );
 }

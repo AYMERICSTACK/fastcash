@@ -53,6 +53,7 @@ type PublicCategorySource = {
   name: string;
   slug: string;
   active?: boolean;
+  image?: string | null;
   parentId?: string | null;
   parent?: { name: string } | null;
   _count?: { products?: number };
@@ -98,6 +99,7 @@ export function toPublicCategory(
     id: category.id,
     slug: category.slug,
     title: staticConfig?.title ?? displayName,
+    image: category.image || staticConfig?.image || fallback.image,
     productCount: category._count?.products ?? 0,
   };
 }
@@ -193,6 +195,7 @@ export function toCatalogProduct(product: {
   image: string | null;
   price: number;
   stock: number;
+  condition?: string | null;
   category?: { name: string; slug: string } | null;
   brand?: { name: string; slug: string } | null;
   media?: Array<{ id: string; alt: string | null; isPrimary: boolean; media: { url: string } }>;
@@ -206,6 +209,7 @@ export function toCatalogProduct(product: {
     categorySlug: product.category?.slug ?? "catalogue",
     price: product.price,
     stock: product.stock,
+    condition: product.condition ?? "GOOD",
     image: product.media?.find((item) => item.isPrimary)?.media.url ?? product.image ?? product.media?.[0]?.media.url ?? "",
     images: product.media?.map((item) => ({ id: item.id, url: item.media.url, alt: item.alt ?? undefined, isPrimary: item.isPrimary })) ?? [],
     description: product.description ?? "",

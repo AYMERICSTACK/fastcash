@@ -138,6 +138,7 @@ export default async function NewProductPage() {
     const price = parsePrice(formData.get("price"));
     const stock = parseStock(formData.get("stock"));
     const visibility = String(formData.get("visibility") || "active");
+    const condition = String(formData.get("condition") || "GOOD");
 
     if (!name) {
       throw new Error("Le nom du produit est obligatoire.");
@@ -168,6 +169,7 @@ export default async function NewProductPage() {
         brandId: finalBrandId,
         price,
         stock,
+        condition,
         active: visibility === "active",
       },
       select: {
@@ -280,6 +282,17 @@ export default async function NewProductPage() {
             <label>
               <span>Stock disponible</span>
               <input name="stock" type="number" step="1" min="0" placeholder="1" required />
+            </label>
+
+            <label>
+              <span>État du produit</span>
+              <select name="condition" defaultValue="GOOD">
+                <option value="DAMAGED">Abîmé</option>
+                <option value="GOOD">Bon état</option>
+                <option value="EXCELLENT">Excellent état</option>
+                <option value="LIKE_NEW">Comme neuf</option>
+                <option value="NEW">Neuf</option>
+              </select>
             </label>
 
             <label>

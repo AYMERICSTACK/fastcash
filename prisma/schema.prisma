@@ -49,6 +49,7 @@ model Category {
   name         String
   slug         String     @unique
   active       Boolean    @default(true)
+  image        String?
   position     Int        @default(0)
   parentId     String?
   parent       Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
@@ -90,6 +91,7 @@ model Product {
   image        String?
   price        Float
   stock        Int         @default(0)
+  condition    String      @default("GOOD")
   active       Boolean     @default(true)
   categoryId   String?
   category     Category?   @relation(fields: [categoryId], references: [id])

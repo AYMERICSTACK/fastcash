@@ -161,6 +161,7 @@ export default async function ProductDetailPage({
     const price = Number(String(formData.get("price") || "0").replace(",", "."));
     const stock = Number.parseInt(String(formData.get("stock") || "0"), 10);
     const visibility = String(formData.get("visibility") || "active");
+    const condition = String(formData.get("condition") || "GOOD");
 
     if (!name || Number.isNaN(price) || Number.isNaN(stock) || price < 0) {
       throw new Error("Données produit invalides.");
@@ -182,6 +183,7 @@ export default async function ProductDetailPage({
         brandId: finalBrandId,
         price,
         stock,
+        condition,
         active: visibility === "active",
       },
     });
@@ -398,6 +400,17 @@ export default async function ProductDetailPage({
             <label>
               <span>Stock disponible</span>
               <input name="stock" type="number" step="1" defaultValue={product.stock} required />
+            </label>
+            <label>
+              <span>État du produit</span>
+              <select name="condition" defaultValue={product.condition}>
+                <option value="DAMAGED">Abîmé</option>
+                <option value="GOOD">Bon état</option>
+                <option value="EXCELLENT">Excellent état</option>
+                <option value="LIKE_NEW">Comme neuf</option>
+                <option value="NEW">Neuf</option>
+              </select>
+              <small>Cette information sera affichée clairement sur la fiche produit.</small>
             </label>
             <label>
               <span>Visibilité</span>

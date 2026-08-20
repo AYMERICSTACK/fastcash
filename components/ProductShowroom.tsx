@@ -61,6 +61,7 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
     availablePluralSuffix: locale === "en" ? "available" : "disponibles",
     reference: locale === "en" ? "Reference" : "Référence",
     universe: locale === "en" ? "Universe" : "Univers",
+    condition: locale === "en" ? "Condition" : "État",
     description:
       locale === "en"
         ? "Pre-owned item checked and available at FAST CASH Geneva according to in-store stock. For any question, our team can confirm condition and availability before your visit."
@@ -72,6 +73,16 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
         ? "Similar items selected from the same universe to continue your visit."
         : "Des articles proches, sélectionnés dans le même univers pour prolonger votre visite.",
   };
+
+
+  const conditionLabels: Record<string, { fr: string; en: string }> = {
+    DAMAGED: { fr: "Abîmé", en: "Damaged" },
+    GOOD: { fr: "Bon état", en: "Good condition" },
+    EXCELLENT: { fr: "Excellent état", en: "Excellent condition" },
+    LIKE_NEW: { fr: "Comme neuf", en: "Like new" },
+    NEW: { fr: "Neuf", en: "New" },
+  };
+  const conditionLabel = conditionLabels[product.condition || "GOOD"]?.[locale] ?? (locale === "en" ? "Good condition" : "Bon état");
 
   const stockDescription =
     stockStatus === "out-of-stock"
@@ -171,6 +182,10 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
             <div>
               <strong>{copy.universe}</strong>
               <span>{categoryLabel}</span>
+            </div>
+            <div>
+              <strong>{copy.condition}</strong>
+              <span>{conditionLabel}</span>
             </div>
           </div>
 

@@ -65,6 +65,7 @@ export default async function AdminCategoryDetailPage({
 
     const name = String(formData.get("name") || "").trim();
     const slugInput = String(formData.get("slug") || "").trim();
+    const image = String(formData.get("image") || "").trim();
 
     if (!name) {
       throw new Error("Le nom de la catégorie est obligatoire.");
@@ -80,7 +81,7 @@ export default async function AdminCategoryDetailPage({
 
     await prisma.category.update({
       where: { id },
-      data: { name, slug },
+      data: { name, slug, image: image || null },
     });
 
     revalidatePath("/admin/categories");
@@ -123,7 +124,7 @@ export default async function AdminCategoryDetailPage({
           <p className={styles.kicker}>Catégorie FAST CASH</p>
           <h1 className={styles.title}>{category.name}</h1>
           <p className={styles.subtitle}>
-            Modifiez le nom et le slug utilisés dans le catalogue administrable.
+            Modifiez le nom, le slug et le visuel utilisé sur la page d’accueil.
           </p>
         </div>
         <Link href="/admin/categories" className={styles.buttonSecondary}>
@@ -160,6 +161,11 @@ export default async function AdminCategoryDetailPage({
             <label>
               <span>Slug SEO</span>
               <input name="slug" defaultValue={category.slug} required />
+            </label>
+            <label>
+              <span>Photo de la catégorie — page d’accueil</span>
+              <input name="image" defaultValue={category.image || ""} placeholder="https://... ou /images/categories/..." />
+              <small>Cette image remplace le visuel de la catégorie sur la page d’accueil.</small>
             </label>
             <button className={styles.button} type="submit">
               Enregistrer les modifications

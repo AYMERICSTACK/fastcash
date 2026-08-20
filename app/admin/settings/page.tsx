@@ -2,6 +2,7 @@ import AdminShell from "../AdminShell";
 import styles from "../admin.module.css";
 import { prisma } from "@/lib/prisma";
 import SettingsForm from "./SettingsForm";
+import { getGoogleBusinessConnection } from "@/lib/google-business-oauth";
 
 const editableSettings = [
   {
@@ -130,10 +131,10 @@ const editableSettings = [
 
 const groupOrder = ["Boutique", "Commandes", "Factures", "Paiements", "Emails", "Livraison", "Stock"];
 
-export default async function AdminSettingsPage() {
-  const settings = await prisma.setting.findMany({
+export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
+  const [settings, googleConnection, query] = await Promise.all([prisma.setting.findMany({
     orderBy: [{ group: "asc" }, { key: "asc" }],
-  });
+  }), getGoogleBusinessConnection(), searchParams]);
 
   const settingsByKey = new Map(settings.map((setting) => [setting.key, setting]));
 
@@ -188,6 +189,32 @@ export default async function AdminSettingsPage() {
           <p className={styles.statLabel}>Stock faible</p>
           <div className={styles.statValueSmall}>≤ {lowStockThreshold}</div>
           <p className={styles.statHint}>Seuil d'alerte</p>
+        </div>
+      </section>
+
+      <section className={styles.googleBusinessPanel}>
+        <div>
+          <p className={styles.kicker}>Avis Google automatiques</p>
+          <h2>{googleConnection.connected ? "Google Business connecté" : "Connecter Google Business"}</h2>
+          <p className={styles.subtitle}>
+            {googleConnection.connected
+              ? `Établissement connecté : ${googleConnection.locationName || "Google Business"}. Les avis publics sont récupérés automatiquement sur la boutique.`
+              : "Le client autorise FAST CASH avec son propre compte Google. Aucun mot de passe n’est transmis ni stocké."}
+          </p>
+          {query.google === "connected" ? <p className={styles.googleBusinessSuccess}>Connexion réussie : les avis Google sont maintenant reliés à FAST CASH.</p> : null}
+          {query.google && !["connected", "disconnected"].includes(query.google) ? <p className={styles.googleBusinessError}>La connexion Google n’a pas pu être finalisée ({query.google}).</p> : null}
+        </div>
+        <div className={styles.googleBusinessActions}>
+          {googleConnection.connected ? (
+            <>
+              <span className={styles.googleBusinessStatus}>● Connecté</span>
+              <form action="/api/admin/google-business/disconnect" method="post">
+                <button className={styles.buttonSecondary} type="submit">Déconnecter</button>
+              </form>
+            </>
+          ) : (
+            <a className={styles.button} href="/api/admin/google-business/connect">Connecter le compte Google</a>
+          )}
         </div>
       </section>
 

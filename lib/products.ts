@@ -10,6 +10,7 @@ export type Product = {
   categorySlug: string;
   price: number;
   stock: number;
+  condition?: string;
   image: string;
   images?: Array<{ id: string; url: string; alt?: string; isPrimary?: boolean }>;
   description: string;
