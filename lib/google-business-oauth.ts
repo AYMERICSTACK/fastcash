@@ -4,6 +4,43 @@ import { prisma } from "@/lib/prisma";
 export const GOOGLE_BUSINESS_SCOPE = "https://www.googleapis.com/auth/business.manage";
 export const GOOGLE_BUSINESS_OAUTH_STATE_COOKIE = "fc_google_business_oauth_state";
 
+
+function oauthSigningSecret() {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) throw new Error("SESSION_SECRET manquant ou trop court.");
+  return secret;
+}
+
+function signPayload(payload: string) {
+  return crypto.createHmac("sha256", oauthSigningSecret()).update(payload).digest("base64url");
+}
+
+function createSignedPayload(kind: "invite" | "state", ttlSeconds: number) {
+  const payload = Buffer.from(JSON.stringify({ kind, exp: Math.floor(Date.now() / 1000) + ttlSeconds, nonce: crypto.randomBytes(18).toString("base64url") })).toString("base64url");
+  return `${payload}.${signPayload(payload)}`;
+}
+
+function verifySignedPayload(token: string | null, kind: "invite" | "state") {
+  if (!token) return false;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return false;
+  const expected = signPayload(payload);
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { kind?: string; exp?: number };
+    return data.kind === kind && typeof data.exp === "number" && data.exp >= Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
+export function createGoogleBusinessInviteToken() { return createSignedPayload("invite", 30 * 60); }
+export function verifyGoogleBusinessInviteToken(token: string | null) { return verifySignedPayload(token, "invite"); }
+export function createGoogleBusinessState() { return createSignedPayload("state", 10 * 60); }
+export function verifyGoogleBusinessState(token: string | null) { return verifySignedPayload(token, "state"); }
+
 const KEYS = {
   refreshToken: "google.business.refreshToken",
   accountId: "google.business.accountId",
