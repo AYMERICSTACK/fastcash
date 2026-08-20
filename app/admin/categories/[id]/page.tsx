@@ -4,9 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import AdminShell from "../../AdminShell";
 import AdminFlash from "../../AdminFlash";
 import ConfirmSubmitButton from "../../ConfirmSubmitButton";
+import CategoryImageField from "./CategoryImageField";
 import styles from "../../admin.module.css";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { toPublicCategory } from "@/lib/public-categories";
 
 const RESERVED_CATEGORY_SLUGS = new Set(["accueil"]);
 
@@ -58,6 +60,9 @@ export default async function AdminCategoryDetailPage({
   if (!category) {
     notFound();
   }
+
+  // Mirror the storefront resolution order: custom DB image → static category visual → global fallback.
+  const effectiveCategoryImage = toPublicCategory(category).image;
 
   async function updateCategory(formData: FormData) {
     "use server";
@@ -162,11 +167,11 @@ export default async function AdminCategoryDetailPage({
               <span>Slug SEO</span>
               <input name="slug" defaultValue={category.slug} required />
             </label>
-            <label>
-              <span>Photo de la catégorie — page d’accueil</span>
-              <input name="image" defaultValue={category.image || ""} placeholder="https://... ou /images/categories/..." />
-              <small>Cette image remplace le visuel de la catégorie sur la page d’accueil.</small>
-            </label>
+            <CategoryImageField
+              currentImage={category.image}
+              effectiveImage={effectiveCategoryImage}
+              categoryName={category.name}
+            />
             <button className={styles.button} type="submit">
               Enregistrer les modifications
             </button>
