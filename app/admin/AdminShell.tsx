@@ -8,7 +8,6 @@ const navItems = [
   ["Dashboard", "/pilotage"],
   ["Commandes", "/pilotage/commandes"],
   ["Offres clients", "/pilotage/offres"],
-  ["Créateur de visuels", "/pilotage/marketing"],
   ["Produits", "/pilotage/produits"],
   ["Médiathèque", "/pilotage/medias"],
   ["Stocks", "/pilotage/stocks"],
