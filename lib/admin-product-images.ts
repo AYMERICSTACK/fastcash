@@ -1,30 +1,24 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
+import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 
 const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_PRODUCT_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
-const MIME_TO_EXTENSION: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-
-function sanitizeFilePart(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 70);
-}
-
+/**
+ * Enregistre l'image principale d'un produit.
+ *
+ * Important : en production Vercel, le filesystem de l'application (/var/task)
+ * est en lecture seule. Les uploads doivent donc être stockés sur Cloudinary et
+ * seule l'URL persistante est enregistrée en base.
+ */
 export async function saveProductImageFromForm(
   fileEntry: FormDataEntryValue | null,
   fallbackImage: string,
-  productSlug: string,
+  _productSlug: string,
 ) {
   const fallback = fallbackImage.trim();
 
@@ -32,9 +26,7 @@ export async function saveProductImageFromForm(
     return fallback || null;
   }
 
-  const extension = MIME_TO_EXTENSION[fileEntry.type];
-
-  if (!extension) {
+  if (!ALLOWED_PRODUCT_IMAGE_TYPES.has(fileEntry.type)) {
     throw new Error("Format image non autorisé. Utilisez JPG, PNG, WEBP ou GIF.");
   }
 
@@ -42,15 +34,16 @@ export async function saveProductImageFromForm(
     throw new Error("Image trop lourde. La taille maximale autorisée est de 5 Mo.");
   }
 
-  const uploadDirectory = path.join(process.cwd(), "public", "uploads", "products");
-  await mkdir(uploadDirectory, { recursive: true });
+  try {
+    const uploaded = await uploadMediaToCloudinary(fileEntry);
+    return uploaded.secure_url;
+  } catch (error) {
+    console.error("FAST CASH product image upload failed", error);
 
-  const safeSlug = sanitizeFilePart(productSlug) || "produit-fastcash";
-  const fileName = `${safeSlug}-${randomUUID().slice(0, 8)}.${extension}`;
-  const filePath = path.join(uploadDirectory, fileName);
-  const arrayBuffer = await fileEntry.arrayBuffer();
+    if (error instanceof Error && error.message === "CLOUDINARY_NOT_CONFIGURED") {
+      throw new Error("Le stockage des images n'est pas configuré. Contactez l'administrateur FAST CASH.");
+    }
 
-  await writeFile(filePath, Buffer.from(arrayBuffer));
-
-  return `/uploads/products/${fileName}`;
+    throw new Error("L'image n'a pas pu être envoyée. Réessayez dans quelques instants.");
+  }
 }
