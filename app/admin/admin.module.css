@@ -3022,3 +3022,50 @@
     height:38px;
   }
 }
+
+
+/* === BO sidebar V1.1 — garder les actions de pied toujours accessibles === */
+@media (min-width: 981px) {
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sidebar .brand {
+    flex: 0 0 auto;
+  }
+
+  .sidebar .nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-right: 4px;
+    padding-bottom: 8px;
+  }
+
+  .sidebarFooter {
+    flex: 0 0 auto;
+    margin-top: 12px;
+    padding-top: 14px;
+    background: linear-gradient(180deg, rgba(5,5,5,0), rgba(5,5,5,.96) 22%);
+  }
+
+  .backToStore {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .backToStore::after {
+    content: "↗";
+    color: #d4af37;
+    font-size: 15px;
+    line-height: 1;
+  }
+}
