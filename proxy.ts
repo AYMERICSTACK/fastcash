@@ -7,6 +7,7 @@ const PILOTAGE_ROUTES: Record<string, string> = {
   "/pilotage/commandes": "/admin/orders",
   "/pilotage/offres": "/admin/offers",
   "/pilotage/marketing": "/admin/marketing",
+  "/pilotage/avis": "/admin/reviews",
   "/pilotage/produits": "/admin/products",
   "/pilotage/medias": "/admin/media",
   "/pilotage/stocks": "/admin/inventory",

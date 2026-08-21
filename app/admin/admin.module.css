@@ -2799,3 +2799,63 @@
 
   .settingsMobileSectionPicker{margin-top:6px}
 }
+
+/* Avis clients — V1.3 UX polish */
+.reviewsManager{max-width:1180px;margin:0 auto;padding-bottom:92px}
+.reviewsHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:22px}
+.reviewsHeader h1{margin:5px 0 7px;font-size:32px;line-height:1.05}
+.reviewsEyebrow{margin:0;color:#d4af37;font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase}
+.reviewsIntro{margin:0;max-width:720px;color:#96938c;font-size:14px;line-height:1.55}
+.reviewsSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.reviewsSummaryCard{display:grid;gap:5px;padding:17px 18px;border:1px solid rgba(212,175,55,.2);border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(212,175,55,.035))}
+.reviewsSummaryCard span{color:#9d9a92;font-size:10px;font-weight:900;letter-spacing:.11em;text-transform:uppercase}
+.reviewsSummaryCard strong{font-size:23px;line-height:1.1;color:#f4f1e9}
+.reviewsSummaryCard small{color:#77736c;font-size:11px}
+.reviewsList{display:grid;gap:14px}
+.reviewEditorCard{padding:19px;border:1px solid rgba(212,175,55,.2);border-radius:18px;background:linear-gradient(145deg,#171715,#10100f);box-shadow:0 14px 34px rgba(0,0,0,.16)}
+.reviewEditorTop{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:15px;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.reviewIdentity{display:flex;align-items:center;gap:13px;min-width:0}
+.reviewAvatar{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border:1px solid rgba(212,175,55,.42);border-radius:50%;background:rgba(212,175,55,.07);color:#e2bd35;font-weight:900;font-size:17px}
+.reviewIdentity>div:last-child{display:grid;gap:2px;min-width:0}
+.reviewIdentity strong{overflow:hidden;color:#f6f3eb;font-size:15px;text-overflow:ellipsis;white-space:nowrap}
+.reviewCardLabel{color:#817d75;font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
+.reviewStars{color:#e0b92e;font-size:13px;letter-spacing:1px}
+.reviewStars span{color:#403b2b}
+.reviewPublishToggle{display:flex;align-items:center;gap:9px;padding:9px 12px;border:1px solid rgba(212,175,55,.18);border-radius:999px;background:rgba(255,255,255,.035);color:#ddd8ce;font-size:12px;font-weight:800;cursor:pointer}
+.reviewPublishToggle input{accent-color:#d4af37}
+.reviewEditorGrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(170px,.65fr) minmax(150px,.5fr);gap:12px}
+.reviewField{display:grid;gap:7px;color:#a29e95;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.reviewField input,.reviewField select,.reviewField textarea{width:100%;box-sizing:border-box;border:1px solid rgba(212,175,55,.17);border-radius:11px;outline:none;background:#0d0d0c;color:#f1eee7;font:inherit;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;transition:border-color .18s ease,box-shadow .18s ease}
+.reviewField input,.reviewField select{height:42px;padding:0 12px}
+.reviewField textarea{min-height:92px;padding:12px;resize:vertical;line-height:1.5}
+.reviewField input:focus,.reviewField select:focus,.reviewField textarea:focus{border-color:rgba(212,175,55,.58);box-shadow:0 0 0 3px rgba(212,175,55,.08)}
+.reviewCommentField{margin-top:12px}
+.reviewEditorFooter{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:13px;color:#77736c;font-size:11px}
+.reviewDeleteButton{border:0;background:transparent;color:#c97a72;font:inherit;font-size:11px;font-weight:900;cursor:pointer}
+.reviewDeleteButton:hover{color:#ff9a90}
+.reviewsSaveBar{position:sticky;z-index:20;bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:20px;padding:12px 14px 12px 17px;border:1px solid rgba(212,175,55,.28);border-radius:16px;background:rgba(13,13,12,.94);box-shadow:0 18px 44px rgba(0,0,0,.38);backdrop-filter:blur(14px)}
+.reviewsSaveBar>div{display:grid;gap:2px}
+.reviewsSaveBar strong{font-size:12px;color:#f2efe8}
+.reviewsSaveBar span{font-size:10px;color:#858179}
+@media(max-width:820px){
+ .reviewsManager{padding-bottom:80px}
+ .reviewsHeader{align-items:stretch;flex-direction:column}
+ .reviewsHeader .button{width:100%;justify-content:center}
+ .reviewsSummary{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .reviewEditorGrid{grid-template-columns:1fr 1fr}
+ .reviewEditorGrid .reviewField:first-child{grid-column:1/-1}
+}
+@media(max-width:560px){
+ .reviewsHeader h1{font-size:27px}
+ .reviewsSummary{grid-template-columns:1fr}
+ .reviewsSummaryCard{grid-template-columns:1fr auto;align-items:center}
+ .reviewsSummaryCard small{grid-column:1/-1}
+ .reviewEditorCard{padding:15px;border-radius:16px}
+ .reviewEditorTop{align-items:flex-start}
+ .reviewPublishToggle{padding:8px 10px}
+ .reviewEditorGrid{grid-template-columns:1fr}
+ .reviewEditorGrid .reviewField:first-child{grid-column:auto}
+ .reviewEditorFooter{align-items:flex-start;flex-direction:column}
+ .reviewsSaveBar{align-items:stretch;flex-direction:column;bottom:8px}
+ .reviewsSaveBar .button{width:100%;justify-content:center}
+}
