@@ -6,6 +6,42 @@ const DEFAULT_CATEGORY_IMAGE = "/images/hero/fastcash-luxury-hero.jpg";
 
 const RESERVED_CATEGORY_SLUGS = new Set(["accueil", "promotions", "bonnes-affaires", "apple", "samsung"]);
 
+
+const CURATED_CATEGORY_IMAGES: Record<string, string> = {
+  "accessoires luxe": "/images/categories/curated/accessoires-luxe.webp",
+  "accessoires informatique": "/images/categories/curated/accessoires-informatique.webp",
+  "accessoires consoles, jeux vidéos": "/images/categories/curated/accessoires-consoles.webp",
+  "accessoires consoles, jeux video": "/images/categories/curated/accessoires-consoles.webp",
+  "accessoires consoles jeux vidéos": "/images/categories/curated/accessoires-consoles.webp",
+  "accessoires consoles jeux video": "/images/categories/curated/accessoires-consoles.webp",
+  "accessoires téléphonie": "/images/categories/curated/accessoires-telephonie.webp",
+  "accessoires telephonie": "/images/categories/curated/accessoires-telephonie.webp",
+  android: "/images/categories/curated/android.webp",
+  audio: "/images/categories/curated/audio.webp",
+  "image & son": "/images/categories/curated/image-son.webp",
+  "image et son": "/images/categories/curated/image-son.webp",
+};
+
+function normalizedCuratedCategoryName(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("fr")
+    .replace(/\s+/g, " ");
+}
+
+function curatedCategoryImage(category: PublicCategorySource, displayName: string) {
+  return (
+    CURATED_CATEGORY_IMAGES[normalizedCuratedCategoryName(displayName)] ??
+    CURATED_CATEGORY_IMAGES[normalizedCuratedCategoryName(category.name)] ??
+    null
+  );
+}
+
+function isExplicitCustomCategoryImage(image?: string | null) {
+  if (!image) return false;
+  return /^https?:\/\//i.test(image) || image.startsWith("/uploads/");
+}
+
 // Legacy Prestashop aliases that must not create duplicate public universes.
 const PUBLIC_CATEGORY_ALIASES: Record<string, string> = {
   "bijouterie": "bijoux",
@@ -93,13 +129,18 @@ export function toPublicCategory(
   const displayName = contextualCategoryName(category, duplicatedNames);
   const fallback = defaultCategoryConfig(displayName, category.slug);
 
+  const curatedImage = curatedCategoryImage(category, displayName);
+  const image = isExplicitCustomCategoryImage(category.image)
+    ? category.image!
+    : curatedImage || category.image || staticConfig?.image || fallback.image;
+
   return {
     ...fallback,
     ...staticConfig,
     id: category.id,
     slug: category.slug,
     title: staticConfig?.title ?? displayName,
-    image: category.image || staticConfig?.image || fallback.image,
+    image,
     productCount: category._count?.products ?? 0,
   };
 }
