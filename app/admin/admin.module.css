@@ -3069,3 +3069,42 @@
     line-height: 1;
   }
 }
+
+/* === BO V1.2 — sidebar scrollbar polish === */
+@media (min-width: 981px) {
+  .sidebar .nav {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, .42) transparent;
+  }
+
+  .sidebar .nav::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar .nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar .nav::-webkit-scrollbar-thumb {
+    min-height: 48px;
+    border-radius: 999px;
+    background: linear-gradient(
+      180deg,
+      rgba(226, 188, 55, .62),
+      rgba(154, 124, 28, .42)
+    );
+    border: 1px solid rgba(212, 175, 55, .12);
+  }
+
+  .sidebar .nav::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      180deg,
+      rgba(235, 197, 61, .88),
+      rgba(183, 145, 31, .68)
+    );
+  }
+
+  .sidebar .nav::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
