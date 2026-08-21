@@ -2859,3 +2859,166 @@
  .reviewsSaveBar{align-items:stretch;flex-direction:column;bottom:8px}
  .reviewsSaveBar .button{width:100%;justify-content:center}
 }
+
+/* === Paramètres V2.1.2 — mobile navigation polish === */
+@media(max-width:980px){
+  .settingsMobileSectionPicker{
+    position:sticky;
+    top:8px;
+    z-index:45;
+    margin:8px 0 12px;
+  }
+
+  .settingsMobileSectionButton{
+    min-height:62px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    box-shadow:0 10px 26px rgba(0,0,0,.24);
+    backdrop-filter:blur(14px);
+  }
+
+  .settingsMobileSectionOverlay{
+    position:fixed;
+    inset:0;
+    z-index:1000;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding:0;
+    background:rgba(0,0,0,.68);
+    backdrop-filter:blur(4px);
+    overscroll-behavior:contain;
+  }
+
+  .settingsMobileSectionMenu{
+    position:relative;
+    inset:auto;
+    top:auto;
+    left:auto;
+    right:auto;
+    width:100%;
+    max-height:min(78dvh,680px);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border:1px solid rgba(212,175,55,.38);
+    border-bottom:0;
+    border-radius:22px 22px 0 0;
+    background:linear-gradient(180deg,#121210 0%,#090909 100%);
+    box-shadow:0 -24px 70px rgba(0,0,0,.72);
+    animation:settingsSheetIn .18s ease-out;
+  }
+
+  @keyframes settingsSheetIn{
+    from{transform:translateY(22px);opacity:.72}
+    to{transform:translateY(0);opacity:1}
+  }
+
+  .settingsMobileSheetHandle{
+    width:42px;
+    height:4px;
+    flex:0 0 auto;
+    margin:9px auto 2px;
+    border-radius:999px;
+    background:rgba(255,255,255,.22);
+  }
+
+  .settingsMobileSectionMenuHead{
+    position:sticky;
+    top:0;
+    z-index:2;
+    flex:0 0 auto;
+    padding:11px 14px 12px;
+    background:rgba(18,18,16,.97);
+    backdrop-filter:blur(12px);
+  }
+
+  .settingsMobileSectionMenuHead>div{
+    display:grid;
+    gap:2px;
+  }
+
+  .settingsMobileSectionMenuHead small{
+    color:rgba(247,241,228,.42);
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+  }
+
+  .settingsMobileSectionMenuHead span{
+    font-size:12px;
+  }
+
+  .settingsMobileSectionMenuHead button{
+    width:38px;
+    height:38px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .settingsMobileSectionList{
+    display:block;
+    min-height:0;
+    max-height:none;
+    flex:1 1 auto;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:7px 8px calc(14px + env(safe-area-inset-bottom));
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
+    scrollbar-width:thin;
+  }
+
+  .settingsMobileSectionList>button{
+    min-height:58px;
+    margin:0 0 4px;
+    padding:10px 11px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .settingsMobileSectionList>button:active{
+    transform:scale(.995);
+    background:rgba(212,175,55,.15);
+  }
+
+  .settingsMobileSectionList i{
+    width:38px;
+    height:38px;
+  }
+
+  .settingsMobileSectionList strong{font-size:13px}
+  .settingsMobileSectionList small{
+    margin-top:1px;
+    font-size:9px;
+  }
+}
+
+@media(max-width:640px){
+  .settingsMobileSectionPicker{
+    top:6px;
+    margin-top:4px;
+  }
+
+  .settingsMobileSectionMenu{
+    max-height:82dvh;
+  }
+
+  .settingsMobileSectionButton{
+    grid-template-columns:40px minmax(0,1fr) 38px;
+    min-height:60px;
+    border-radius:16px;
+  }
+
+  .settingsMobileSectionIcon{
+    width:40px;
+    height:40px;
+  }
+
+  .settingsMobileSectionButton>i{
+    width:38px;
+    height:38px;
+  }
+}

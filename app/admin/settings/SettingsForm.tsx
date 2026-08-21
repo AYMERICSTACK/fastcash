@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import styles from "../admin.module.css";
 import { useAdminToast } from "../AdminProviders";
 
@@ -49,6 +49,24 @@ export default function SettingsForm({ settings, integrations }: SettingsFormPro
   const toast = useAdminToast();
   const [activeSection, setActiveSection] = useState("Boutique");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
 
   const groupedSettings = useMemo(() => {
     const groups = new Map<string, SettingField[]>();
@@ -203,12 +221,27 @@ export default function SettingsForm({ settings, integrations }: SettingsFormPro
         </button>
 
         {mobileMenuOpen ? (
-          <div className={styles.settingsMobileSectionMenu}>
-            <div className={styles.settingsMobileSectionMenuHead}>
-              <span>Choisir une rubrique</span>
-              <button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Fermer">×</button>
-            </div>
-            <div className={styles.settingsMobileSectionList}>
+          <div
+            className={styles.settingsMobileSectionOverlay}
+            role="presentation"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <div
+              className={styles.settingsMobileSectionMenu}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Choisir une rubrique"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className={styles.settingsMobileSheetHandle} aria-hidden="true" />
+              <div className={styles.settingsMobileSectionMenuHead}>
+                <div>
+                  <small>Paramètres FAST CASH</small>
+                  <span>Choisir une rubrique</span>
+                </div>
+                <button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Fermer">×</button>
+              </div>
+              <div className={styles.settingsMobileSectionList}>
               {groupedSettings.map((section) => {
                 const meta = sectionMeta[section.group] || { label: section.group, description: "", icon: "•" };
                 return (
@@ -235,6 +268,7 @@ export default function SettingsForm({ settings, integrations }: SettingsFormPro
                   {activeSection === "Intégrations" ? <b>✓</b> : null}
                 </button>
               ) : null}
+              </div>
             </div>
           </div>
         ) : null}
