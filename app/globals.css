@@ -8341,7 +8341,7 @@ textarea {
   font-weight: 900;
 }
 .google-review-card-top > div { min-width: 0; display: grid; gap: 3px; }
-.google-review-card-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.google-review-card-top strong { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.2; font-size: 15px; }
 .google-review-card-top div span { color: rgba(255,255,255,.48); font-size: 12px; text-transform: capitalize; }
 .google-review-source { width: 27px; height: 27px; border-radius: 50%; font-size: 13px; }
 .google-review-comment {

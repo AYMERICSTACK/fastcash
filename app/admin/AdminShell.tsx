@@ -16,6 +16,7 @@ const navItems = [
   ["Clients", "/pilotage/clients"],
   ["Factures", "/pilotage/factures"],
   ["Coupons", "/pilotage/coupons"],
+  ["Avis clients", "/pilotage/avis"],
   ["Migration Prestashop", "/pilotage/migration-prestashop"],
   ["Paramètres", "/pilotage/parametres"],
 ] as const;
