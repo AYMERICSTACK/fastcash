@@ -6,6 +6,10 @@ import { formatAdminPrice } from "@/lib/admin-data";
 import { formatAdminDate, getCustomerName, getOrderStatusLabel, getStockLabel, getReceptionLabel, isPickupCarrier } from "@/lib/admin-ui";
 import { getShopSettings } from "@/lib/settings";
 
+// Le dashboard doit toujours refléter les commandes écrites par les webhooks.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminDashboardPage() {
   const settings = await getShopSettings();
   const today = new Date();

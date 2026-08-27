@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import { formatCHF } from "@/lib/format";
@@ -15,6 +16,17 @@ import {
 } from "@/lib/transactional-emails";
 
 export const runtime = "nodejs";
+
+function revalidateOrderBackOffice(orderId?: string) {
+  revalidatePath("/admin");
+  revalidatePath("/pilotage");
+  revalidatePath("/admin/orders");
+  revalidatePath("/pilotage/commandes");
+  if (orderId) {
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath(`/pilotage/commandes/${orderId}`);
+  }
+}
 
 type OrderLine = {
   name: string;
@@ -488,6 +500,8 @@ async function handleRefundEvent(event: Stripe.Event, stripe: Stripe) {
       : []),
   ]);
 
+  revalidateOrderBackOffice(payment.orderId);
+
   return { processed: true, fullyRefunded, refundedAmount };
 }
 
@@ -657,6 +671,8 @@ export async function POST(req: Request) {
     if (!persistence.created) {
       return NextResponse.json({ received: true, duplicate: true });
     }
+
+    revalidateOrderBackOffice(persistence.order.id);
 
     const offerTokens = String(session.metadata?.offer_tokens || "").split(",").filter(Boolean);
     if (offerTokens.length) {
