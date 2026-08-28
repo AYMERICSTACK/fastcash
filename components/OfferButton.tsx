@@ -1,8 +1,32 @@
 "use client";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { Product } from "@/lib/products";
 export default function OfferButton({product}:{product:Product}){
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[msg,setMsg]=useState("");
  async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setMsg("");const fd=new FormData(e.currentTarget);try{const r=await fetch("/api/offers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:String(product.id),name:fd.get("name"),email:fd.get("email"),phone:fd.get("phone"),amount:fd.get("amount"),message:fd.get("message")})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Impossible d'envoyer l'offre.");setMsg("Votre offre a bien été transmise à FAST CASH Genève.");}catch(x){setMsg(x instanceof Error?x.message:"Une erreur est survenue.")}finally{setBusy(false)}}
- return <><button type="button" className="btn offer-trigger" onClick={()=>setOpen(true)}>Faire une offre</button>{open?<div className="offer-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><div className="offer-modal" role="dialog" aria-modal="true"><button className="offer-modal-close" onClick={()=>setOpen(false)}>×</button><p className="hero-kicker">Négociation privée</p><h2>Proposer votre prix</h2><p className="muted">Prix affiché : <strong>{product.price.toFixed(2)} CHF</strong>. FAST CASH étudiera votre proposition et pourra l'accepter, la refuser ou vous faire une contre-offre.</p>{msg?<div className="offer-message">{msg}</div>:null}<form onSubmit={submit}><label>Votre offre (CHF)<input name="amount" type="number" min="1" step="0.01" required /></label><div className="offer-form-grid"><label>Nom<input name="name" required maxLength={120}/></label><label>E-mail<input name="email" type="email" required maxLength={160}/></label></div><label>Téléphone<input name="phone" maxLength={40}/></label><label>Message (facultatif)<textarea name="message" rows={3} maxLength={1000}/></label><button className="btn btn-gold" disabled={busy}>{busy?"Envoi…":"Envoyer mon offre"}</button></form></div></div>:null}</>
+ const modal=open && typeof document!=="undefined" ? createPortal(
+  <div className="offer-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}>
+   <div className="offer-modal" role="dialog" aria-modal="true" aria-labelledby="offer-modal-title">
+    <button type="button" className="offer-modal-close" aria-label="Fermer" onClick={()=>setOpen(false)}>×</button>
+    <p className="hero-kicker">Négociation privée</p>
+    <h2 id="offer-modal-title">Proposer votre prix</h2>
+    <p className="offer-price">Prix affiché : <strong>{product.price.toFixed(2)} CHF</strong></p>
+    <p className="muted offer-intro">FAST CASH étudiera votre proposition et pourra l'accepter, la refuser ou vous proposer une contre-offre.</p>
+    {msg?<div className="offer-message">{msg}</div>:null}
+    <form onSubmit={submit}>
+     <label>Votre offre (CHF)<input name="amount" type="number" min="1" step="0.01" required /></label>
+     <div className="offer-form-grid">
+      <label>Nom<input name="name" required maxLength={120}/></label>
+      <label>E-mail<input name="email" type="email" required maxLength={160}/></label>
+     </div>
+     <label>Téléphone<input name="phone" maxLength={40}/></label>
+     <label>Message (facultatif)<textarea name="message" rows={3} maxLength={1000}/></label>
+     <button className="btn btn-gold" disabled={busy}>{busy?"Envoi…":"Envoyer mon offre"}</button>
+    </form>
+   </div>
+  </div>,
+  document.body
+ ) : null;
+ return <><button type="button" className="btn offer-trigger" onClick={()=>setOpen(true)}>Faire une offre</button>{modal}</>
 }

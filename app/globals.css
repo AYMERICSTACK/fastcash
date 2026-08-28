@@ -8375,3 +8375,109 @@ textarea {
   .google-review-card { min-height: 220px; }
   .google-reviews-footer { align-items: flex-start; flex-direction: column; gap: 8px; }
 }
+
+
+/* CHECK 2 — polish mobile de la modale "Faire une offre" */
+.offer-price{
+  margin:8px 0 4px;
+  color:#666;
+}
+.offer-intro{
+  margin-top:0;
+}
+
+@media (max-width:640px){
+  .offer-modal-backdrop{
+    place-items:center;
+    padding:12px;
+  }
+
+  .offer-modal{
+    width:min(94vw,620px);
+    max-height:90dvh;
+    border-radius:18px;
+    padding:18px 16px 14px;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .offer-modal-close{
+    position:sticky;
+    top:0;
+    z-index:6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:40px;
+    height:40px;
+    margin:-6px -4px -34px auto;
+    border-radius:999px;
+    background:rgba(255,255,255,.96);
+    box-shadow:0 6px 18px rgba(0,0,0,.12);
+    font-size:28px;
+    line-height:1;
+  }
+
+  .offer-modal .hero-kicker{
+    margin:0 46px 6px 0;
+  }
+
+  .offer-modal h2{
+    margin:0 44px 8px 0;
+    font-size:clamp(26px,8vw,32px);
+    line-height:1.05;
+  }
+
+  .offer-price{
+    margin:6px 0 2px;
+    font-size:15px;
+    line-height:1.35;
+  }
+
+  .offer-intro{
+    margin:0;
+    font-size:14px;
+    line-height:1.5;
+  }
+
+  .offer-modal form{
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .offer-modal label{
+    gap:4px;
+    font-size:13px;
+  }
+
+  .offer-modal input,
+  .offer-modal textarea{
+    border-radius:12px;
+    padding:10px 12px;
+    min-height:46px;
+    font-size:16px; /* évite le zoom automatique d'iOS */
+  }
+
+  .offer-modal textarea{
+    min-height:88px;
+    resize:vertical;
+  }
+
+  .offer-form-grid{
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .offer-message{
+    margin-top:10px;
+  }
+
+  .offer-modal form > .btn-gold{
+    position:sticky;
+    bottom:-1px;
+    z-index:5;
+    min-height:50px;
+    margin-top:2px;
+    box-shadow:0 -10px 24px rgba(255,255,255,.92),0 8px 24px rgba(0,0,0,.12);
+  }
+}
