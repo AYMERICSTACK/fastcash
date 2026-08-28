@@ -207,7 +207,7 @@ export const strategicCategories: CategoryConfig[] = [
     cta: "Faire estimer votre appareil",
     keywords: ["Appareil photo Genève", "Casque audio Genève"],
     advantages: ["Produits testés", "Marques reconnues", "Disponibilité immédiate", "Prix avantageux"],
-    image: "/images/categories/image-son.jpg",
+    image: "/images/categories/curated/image-son.webp",
     eyebrow: "Audio • photo • vidéo",
   },
   {

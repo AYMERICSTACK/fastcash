@@ -11,6 +11,7 @@ const CURATED_CATEGORY_IMAGES: Record<string, string> = {
   "accessoires luxe": "/images/categories/curated/accessoires-luxe.webp",
   "accessoires informatique": "/images/categories/curated/accessoires-informatique.webp",
   "accessoires consoles, jeux vidéos": "/images/categories/curated/accessoires-consoles.webp",
+  "accessoires consoles, jeux vidéo": "/images/categories/curated/accessoires-consoles.webp",
   "accessoires consoles, jeux video": "/images/categories/curated/accessoires-consoles.webp",
   "accessoires consoles jeux vidéos": "/images/categories/curated/accessoires-consoles.webp",
   "accessoires consoles jeux video": "/images/categories/curated/accessoires-consoles.webp",
@@ -42,22 +43,43 @@ function isExplicitCustomCategoryImage(image?: string | null) {
   return /^https?:\/\//i.test(image) || image.startsWith("/uploads/");
 }
 
-// Legacy Prestashop aliases that must not create duplicate public universes.
-const PUBLIC_CATEGORY_ALIASES: Record<string, string> = {
-  "bijouterie": "bijoux",
+// Canonical public slugs. Prestashop/database slugs remain storage identifiers,
+// while public URLs stay stable, descriptive and SEO-friendly.
+const PUBLIC_CATEGORY_CANONICALS: Record<string, string> = {
+  bijouterie: "bijoux",
   "bijouterie-2": "bijoux",
-  "image-son": "image-et-son",
-  "imageson": "image-et-son",
-  "consoles": "consoles-jeux-video",
-  "montre": "montres",
+  "image-et-son": "image-son",
+  imageson: "image-son",
+  "consoles-jeux-video": "consoles",
+  montre: "montres",
+  accessoires: "accessoires-telephonie",
+  "accessoires-2": "accessoires-informatique",
+  "accessoires-3": "accessoires-luxe",
+  "accessoires-4": "accessoires-jeux-video",
+};
+
+const PUBLIC_CATEGORY_SOURCES: Record<string, string[]> = {
+  bijoux: ["bijouterie", "bijouterie-2", "bijoux"],
+  "image-son": ["image-et-son", "image-son", "imageson"],
+  consoles: ["consoles-jeux-video", "consoles"],
+  montres: ["montres", "montre"],
+  "accessoires-telephonie": ["accessoires"],
+  "accessoires-informatique": ["accessoires-2"],
+  "accessoires-luxe": ["accessoires-3"],
+  "accessoires-jeux-video": ["accessoires-4"],
 };
 
 export function resolvePublicCategorySlug(slug: string) {
-  return PUBLIC_CATEGORY_ALIASES[slug] ?? slug;
+  return PUBLIC_CATEGORY_CANONICALS[slug] ?? slug;
 }
 
-function isLegacyPublicAlias(slug: string) {
-  return Boolean(PUBLIC_CATEGORY_ALIASES[slug]);
+function sourceCategorySlugs(slug: string) {
+  const canonical = resolvePublicCategorySlug(slug);
+  return PUBLIC_CATEGORY_SOURCES[canonical] ?? [canonical];
+}
+
+function canonicalCategorySlug(slug: string) {
+  return resolvePublicCategorySlug(slug);
 }
 
 function isPublicCategorySlug(slug: string) {
@@ -125,20 +147,21 @@ export function toPublicCategory(
   category: PublicCategorySource,
   duplicatedNames?: ReadonlySet<string>,
 ): PublicCategory {
-  const staticConfig = getCategory(category.slug);
+  const publicSlug = canonicalCategorySlug(category.slug);
+  const staticConfig = getCategory(publicSlug);
   const displayName = contextualCategoryName(category, duplicatedNames);
-  const fallback = defaultCategoryConfig(displayName, category.slug);
+  const fallback = defaultCategoryConfig(displayName, publicSlug);
 
   const curatedImage = curatedCategoryImage(category, displayName);
   const image = isExplicitCustomCategoryImage(category.image)
     ? category.image!
-    : curatedImage || category.image || staticConfig?.image || fallback.image;
+    : curatedImage || staticConfig?.image || category.image || fallback.image;
 
   return {
     ...fallback,
     ...staticConfig,
     id: category.id,
-    slug: category.slug,
+    slug: publicSlug,
     title: staticConfig?.title ?? displayName,
     image,
     productCount: category._count?.products ?? 0,
@@ -163,7 +186,6 @@ export async function getPublicCategories(): Promise<PublicCategory[]> {
     (category) =>
       !isLegacyRootAccessories(category) &&
       isPublicCategorySlug(category.slug) &&
-      !isLegacyPublicAlias(category.slug) &&
       category._count.products > 0,
   );
 
@@ -179,9 +201,15 @@ export async function getPublicCategories(): Promise<PublicCategory[]> {
       .map(([name]) => name),
   );
 
-  const dynamic = eligibleCategories.map((category) =>
-    toPublicCategory(category, duplicatedNames),
-  );
+  const dynamicBySlug = new Map<string, PublicCategory>();
+  for (const category of eligibleCategories) {
+    const publicCategory = toPublicCategory(category, duplicatedNames);
+    const existing = dynamicBySlug.get(publicCategory.slug);
+    if (!existing || publicCategory.productCount > existing.productCount) {
+      dynamicBySlug.set(publicCategory.slug, publicCategory);
+    }
+  }
+  const dynamic = [...dynamicBySlug.values()];
   const knownSlugs = new Set(dynamic.map((category) => category.slug));
   const staticMissing = strategicCategories
     .filter((category) => !knownSlugs.has(category.slug) && isPublicCategorySlug(category.slug))
@@ -191,17 +219,19 @@ export async function getPublicCategories(): Promise<PublicCategory[]> {
 }
 
 export async function getPublicCategoryBySlug(slug: string): Promise<PublicCategory | null> {
-  const category = await prisma.category.findUnique({
-    where: { slug },
+  const canonicalSlug = resolvePublicCategorySlug(slug);
+  const sources = sourceCategorySlugs(canonicalSlug);
+  const category = await prisma.category.findFirst({
+    where: { slug: { in: sources }, active: true },
     include: {
       parent: { select: { name: true } },
       _count: { select: { products: true } },
     },
+    orderBy: { id: "asc" },
   });
 
   if (
     category &&
-    category.active &&
     !isLegacyRootAccessories(category) &&
     isPublicCategorySlug(category.slug)
   ) {
@@ -221,9 +251,9 @@ export async function getPublicCategoryBySlug(slug: string): Promise<PublicCateg
     return toPublicCategory(category, duplicatedNames);
   }
 
-  if (!isPublicCategorySlug(slug)) return null;
+  if (!isPublicCategorySlug(canonicalSlug)) return null;
 
-  const staticCategory = getCategory(slug);
+  const staticCategory = getCategory(canonicalSlug);
   return staticCategory ? { ...staticCategory, productCount: 0 } : null;
 }
 
@@ -247,7 +277,7 @@ export function toCatalogProduct(product: {
     name: product.name,
     reference: product.reference ?? "",
     category: product.category?.name ?? "Catalogue",
-    categorySlug: product.category?.slug ?? "catalogue",
+    categorySlug: product.category?.slug ? canonicalCategorySlug(product.category.slug) : "catalogue",
     price: product.price,
     stock: product.stock,
     condition: product.condition ?? "GOOD",
@@ -315,16 +345,7 @@ export async function getFeaturedPublicProducts(limit = 8): Promise<Product[]> {
 
 export async function getProductsByPublicCategory(slug: string): Promise<Product[]> {
   const resolvedSlug = resolvePublicCategorySlug(slug);
-  const categorySlugs =
-    resolvedSlug === "bijoux"
-      ? ["bijoux", "bijouterie", "bijouterie-2"]
-      : resolvedSlug === "image-et-son"
-        ? ["image-et-son", "image-son", "imageson"]
-        : resolvedSlug === "consoles-jeux-video"
-          ? ["consoles-jeux-video", "consoles"]
-          : resolvedSlug === "montres"
-            ? ["montres", "montre"]
-            : [resolvedSlug];
+  const categorySlugs = sourceCategorySlugs(resolvedSlug);
 
   // Une page d'univers doit inclure les produits dont la catégorie principale
   // est la catégorie demandée OU l'une de ses sous-catégories. On ne s'appuie

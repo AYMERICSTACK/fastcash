@@ -73,6 +73,26 @@ const categorySeo: Record<string, { title: string; description: string }> = {
     description:
       "Smartphones, iPhone, Samsung Galaxy et accessoires de téléphonie d'occasion à Genève. Appareils contrôlés et repris rapidement chez FAST CASH.",
   },
+  "accessoires-telephonie": {
+    title: "Accessoires de téléphonie à Genève",
+    description:
+      "Coques, chargeurs, protections et accessoires pour smartphones disponibles chez FAST CASH Genève selon les arrivages en boutique.",
+  },
+  "accessoires-informatique": {
+    title: "Accessoires informatiques à Genève",
+    description:
+      "Claviers, souris, stockage, connectique et accessoires informatiques disponibles chez FAST CASH Genève selon les arrivages.",
+  },
+  "accessoires-luxe": {
+    title: "Accessoires de luxe d'occasion à Genève",
+    description:
+      "Accessoires de mode et pièces premium d'occasion sélectionnés chez FAST CASH Genève : grandes maisons et arrivages réguliers en boutique.",
+  },
+  "accessoires-jeux-video": {
+    title: "Accessoires gaming et jeux vidéo à Genève",
+    description:
+      "Manettes, accessoires gaming et équipements pour PlayStation, Xbox et Nintendo disponibles chez FAST CASH Genève selon les arrivages.",
+  },
 };
 
 export async function generateStaticParams() {
@@ -85,7 +105,8 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = await getPublicCategoryBySlug(slug);
+  const resolvedSlug = resolvePublicCategorySlug(slug);
+  const category = await getPublicCategoryBySlug(resolvedSlug);
 
   if (!category) {
     return {
@@ -94,12 +115,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const seo = categorySeo[slug] || {
+  const seo = categorySeo[resolvedSlug] || {
     title: `${category.title} ${category.subtitle}`,
     description: category.description,
   };
 
-  const url = `${siteUrl}/categories/${slug}`;
+  const url = `${siteUrl}/categories/${resolvedSlug}`;
 
   return {
     title: seo.title,
@@ -148,11 +169,11 @@ export default async function CategoryPage({ params }: PageProps) {
   // Do not fall back to keyword matching: it caused false positives such as
   // "Dior" matching the old jewelry keyword "or ".
   const list = await getProductsByPublicCategory(resolvedSlug);
-  const categoryUrl = `${siteUrl}/categories/${slug}`;
+  const categoryUrl = `${siteUrl}/categories/${resolvedSlug}`;
   const breadcrumbItems = [
     { label: "Accueil", href: "/" },
     { label: "Catalogue", href: "/recherche" },
-    { label: category.title, href: `/categories/${slug}` },
+    { label: category.title, href: `/categories/${resolvedSlug}` },
   ];
   const collectionJsonLd = {
     "@context": "https://schema.org",
@@ -200,7 +221,7 @@ export default async function CategoryPage({ params }: PageProps) {
 
       <section className="fc-catalog-section" id="produits">
         <div className="container">
-          <CategoryCatalog products={list} categorySlug={slug} />
+          <CategoryCatalog products={list} categorySlug={resolvedSlug} />
         </div>
       </section>
 
