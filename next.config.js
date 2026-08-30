@@ -7,6 +7,20 @@ const nextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/2-accueil", destination: "/", permanent: true },
+      { source: "/accueil", destination: "/", permanent: true },
+      { source: "/luxe", destination: "/categories/maroquinerie", permanent: true },
+      { source: "/telephonie", destination: "/categories/telephonie", permanent: true },
+      { source: "/informatique", destination: "/categories/informatique", permanent: true },
+      { source: "/image-son", destination: "/categories/image-son", permanent: true },
+      { source: "/consoles-jeux-video", destination: "/categories/consoles", permanent: true },
+      { source: "/console-jeux-video", destination: "/categories/consoles", permanent: true },
+      { source: "/bonnes-affaires", destination: "/promotions", permanent: true },
+    ];
+  },
+
   async headers() {
     const securityHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
