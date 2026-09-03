@@ -142,7 +142,7 @@ export default async function ProductDetailPage({
   const productId = product.id;
   const productSlug = product.slug;
   const productReference = product.reference;
-  const productUrl = productSlug ? `/produits/${productSlug}` : `/admin/products/${productId}`;
+  const productUrl = productSlug ? `/produits/${productSlug}` : `/pilotage/produits/${productId}`;
   const inventoryValue = product.price * Math.max(product.stock, 0);
   const hasOrderHistory = product._count.orderItems > 0;
 
@@ -196,7 +196,7 @@ export default async function ProductDetailPage({
       revalidatePath(`/produits/${productSlug}`);
     }
 
-    redirect(`/admin/products/${productId}?flash=productSaved`);
+    redirect(`/pilotage/produits/${productId}?flash=productSaved`);
   }
 
   async function toggleProductVisibility() {
@@ -247,7 +247,7 @@ export default async function ProductDetailPage({
     if (productSlug) {
       revalidatePath(`/produits/${productSlug}`);
     }
-    redirect("/admin/products?flash=productDeleted");
+    redirect("/pilotage/produits?flash=productDeleted");
   }
 
   return (
@@ -261,7 +261,7 @@ export default async function ProductDetailPage({
             Modifiez le prix, le stock, la catégorie et la visibilité. Les suppressions sont sécurisées pour préserver l’historique des commandes.
           </p>
         </div>
-        <Link href="/admin/products" className={styles.buttonSecondary}>
+        <Link href="/pilotage/produits" className={styles.buttonSecondary}>
           ← Retour aux produits
         </Link>
       </header>
