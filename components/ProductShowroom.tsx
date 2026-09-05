@@ -17,10 +17,28 @@ type ProductShowroomProps = {
   relatedProducts: Product[];
 };
 
-function cleanProductDescription(value?: string | null) {
+function stripPrestashopBoilerplate(value: string) {
+  return value
+    // Anciennes promesses commerciales PrestaShop qui ne correspondent plus au site actuel.
+    .replace(/Tous nos produits sont payables? en 3 ou 4 fois sans frais\.?/gi, "")
+    .replace(/Garantie de 1 an\s*:?\s*[^·\n]*(?=(?:\s*[·•-]\s*\*\*)|$)/gi, "")
+    .replace(/Profitez de notre emplacement idéal[^.]*\.?/gi, "")
+    .replace(/Bienvenue chez Fast Cash[^.]*\.?/gi, "")
+    .replace(/Nous vous offrons une large sélection d['’]articles authentiques[^.]*\.?/gi, "")
+    .replace(/Découvrez le luxe d['’]occasion chez FAST CASH à Genève!*/gi, "")
+    .replace(/Nos services exceptionnels\s*:?/gi, "")
+    .replace(/Authenticité garantie\s*:?\s*Chaque produit est minutieusement vérifié et certifié original\.?/gi, "")
+    .replace(/\s*[·•-]\s*(?=[·•-]|$)/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function cleanProductDescription(value?: string | null, importedFromPrestashop = false) {
   if (!value) return "";
 
-  return value
+  const source = importedFromPrestashop ? stripPrestashopBoilerplate(value) : value;
+
+  return source
     .replace(/<\s*br\s*\/?\s*>/gi, "\n")
     .replace(/<\/p\s*>/gi, "\n\n")
     .replace(/<\/?li\b[^>]*>/gi, (tag) => (tag.startsWith("</") ? "\n" : "• "))
@@ -53,7 +71,7 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
   const gallery = product.images?.length ? product.images : product.image ? [{ id: "primary", url: product.image, alt: product.name, isPrimary: true }] : [];
   const [activeImage, setActiveImage] = useState(gallery.find((image) => image.isPrimary)?.url ?? gallery[0]?.url ?? "");
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
-  const publicDescription = cleanProductDescription(product.description);
+  const publicDescription = cleanProductDescription(product.description, product.importedFromPrestashop);
   const descriptionParagraphs = publicDescription.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
   const stockStatus = getStockStatus(product.stock);
   const categoryLabel = translateCategoryName(product.category, locale);

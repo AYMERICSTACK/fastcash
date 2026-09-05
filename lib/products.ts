@@ -16,6 +16,7 @@ export type Product = {
   description: string;
   brand?: string;
   brandSlug?: string;
+  importedFromPrestashop?: boolean;
 };
 export const products = (productsData as Product[]).map((product) => ({
   ...product,

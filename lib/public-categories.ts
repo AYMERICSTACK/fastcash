@@ -259,6 +259,7 @@ export async function getPublicCategoryBySlug(slug: string): Promise<PublicCateg
 
 export function toCatalogProduct(product: {
   id: string;
+  prestashopId?: number | null;
   slug: string;
   name: string;
   reference: string | null;
@@ -286,6 +287,7 @@ export function toCatalogProduct(product: {
     description: product.description ?? "",
     brand: product.brand?.name,
     brandSlug: product.brand?.slug,
+    importedFromPrestashop: product.prestashopId != null,
   };
 }
 
