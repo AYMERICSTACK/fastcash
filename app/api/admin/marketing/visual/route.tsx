@@ -1,16 +1,39 @@
 import { ImageResponse } from "next/og";
 import { requireAdminSession } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type Theme = "tech" | "luxury" | "watches";
+
+type VisualProps = {
+  width: number;
+  height: number;
+  image: string | null;
+  title: string;
+  subtitle: string;
+  price: string;
+  badge: string;
+};
 
 function clean(value: string | null, fallback: string, max = 100) {
   const text = (value || "").trim();
   return (text || fallback).slice(0, max);
 }
 
-async function imageToDataUri(url?: string | null) {
+function absoluteImageUrl(value: string, requestUrl: string) {
+  try {
+    return new URL(value, requestUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
+async function imageToDataUri(value: string | null | undefined, requestUrl: string, zoom: -1 | 0 | 1 = 0) {
+  if (!value) return null;
+  const url = absoluteImageUrl(value, requestUrl);
   if (!url) return null;
 
   try {
@@ -18,944 +41,213 @@ async function imageToDataUri(url?: string | null) {
       cache: "no-store",
       headers: {
         Accept: "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
-        "User-Agent": "FAST-CASH-Studio/2.0",
+        "User-Agent": "FAST-CASH-Studio/4.2",
       },
     });
 
     if (!response.ok) return null;
-
     const type = response.headers.get("content-type") || "image/jpeg";
-    const data = Buffer.from(await response.arrayBuffer()).toString("base64");
-    return `data:${type};base64,${data}`;
-  } catch {
+    if (!type.startsWith("image/")) return null;
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.byteLength > 12 * 1024 * 1024) return null;
+
+    // Smart Crop V4.1: les photos catalogue ont souvent de très grandes marges
+    // blanches. On les retire côté serveur sans modifier le produit lui-même.
+    // Une petite marge est ensuite réinjectée pour que le produit ne touche
+    // jamais le bord du cadre du template.
+    try {
+      const cropped = await sharp(bytes, { failOn: "none" })
+        .flatten({ background: "#ffffff" })
+        .trim({ background: "#ffffff", threshold: 18 })
+        .extend({ top: zoom === 1 ? 6 : zoom === -1 ? 58 : 24, right: zoom === 1 ? 6 : zoom === -1 ? 58 : 24, bottom: zoom === 1 ? 6 : zoom === -1 ? 58 : 24, left: zoom === 1 ? 6 : zoom === -1 ? 58 : 24, background: "#ffffff" })
+        .resize({ width: 1000, height: 1000, fit: "inside", withoutEnlargement: false })
+        .png({ compressionLevel: 8 })
+        .toBuffer();
+
+      return `data:image/png;base64,${cropped.toString("base64")}`;
+    } catch (cropError) {
+      console.warn("FAST CASH Studio smart crop fallback:", cropError);
+      return `data:${type};base64,${bytes.toString("base64")}`;
+    }
+  } catch (error) {
+    console.error("FAST CASH Studio image fetch error:", error);
     return null;
   }
 }
 
-function Logo({ logo, dark = false }: { logo: string | null; dark?: boolean }) {
-  if (logo) {
+function socialTitle(value: string, subtitle: string) {
+  let title = value.trim();
+  const label = subtitle.trim();
+
+  // La marque est déjà affichée comme surtitre : éviter de la répéter dans le titre social.
+  if (label.length >= 3 && title.toLocaleLowerCase("fr").startsWith(`${label.toLocaleLowerCase("fr")} `)) {
+    title = title.slice(label.length).trim();
+  }
+
+  // Les mentions d'état restent disponibles sur la fiche produit et dans le BO,
+  // mais alourdissent inutilement la créa Instagram.
+  title = title
+    .replace(/[,.;:\s-]*(?:état|etat)\s+(?:neuf|comme neuf|bon|très bon|tres bon)\.?$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (title.length <= 62) return title;
+  const shortened = title.slice(0, 62).replace(/\s+\S*$/, "").replace(/[,.;:\s-]+$/, "");
+  return `${shortened}…`;
+}
+
+function Brand({ light = false }: { light?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", color: light ? "#ffffff" : "#111111" }}>
+      <span style={{ display: "flex", fontSize: 36, fontWeight: 900, letterSpacing: 6.2 }}>FAST CASH</span>
+      <span style={{ display: "flex", marginTop: 5, color: "#d4af37", fontSize: 12, fontWeight: 900, letterSpacing: 8.5 }}>GENÈVE</span>
+    </div>
+  );
+}
+
+function ProductImage({ image }: { image: string | null }) {
+  if (!image) {
     return (
-      <img
-        src={logo}
-        alt=""
-        width="245"
-        height="74"
-        style={{ objectFit: "contain" }}
-      />
+      <div style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", color: "#8f8f8f", fontSize: 22, fontWeight: 700 }}>
+        Photo produit indisponible
+      </div>
     );
   }
 
+  return <img src={image} alt="" width="760" height="760" style={{ width: "100%", height: "100%", objectFit: "contain" }} />;
+}
+
+function Price({ value, accent = "#d4af37", light = false, story = false }: { value: string; accent?: string; light?: boolean; story?: boolean }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        color: dark ? "#111111" : "#ffffff",
-      }}
-    >
-      <span style={{ fontSize: 28, fontWeight: 900, letterSpacing: 5 }}>
-        FAST CASH
-      </span>
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: 9,
-          color: "#d4af37",
-        }}
-      >
-        GENÈVE
-      </span>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+      <span style={{ display: "flex", fontSize: story ? 84 : 74, lineHeight: 1, fontWeight: 900, letterSpacing: -2, color: light ? "#ffffff" : "#17120e" }}>{value}</span>
+      <span style={{ display: "flex", color: accent, fontSize: story ? 25 : 21, fontWeight: 900, letterSpacing: 2 }}>CHF</span>
     </div>
   );
 }
 
-function Feature({
-  text,
-  accent,
-  fg,
-  bg,
-  border,
-}: {
-  text: string;
-  accent: string;
-  fg: string;
-  bg: string;
-  border: string;
-}) {
+function Footer({ color = "#d4af37", muted = "#8b8170", label = "GENÈVE · SUISSE", story = false }: { color?: string; muted?: string; label?: string; story?: boolean }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        minHeight: 60,
-        padding: "11px 14px",
-        borderRadius: 14,
-        border: `1px solid ${border}`,
-        backgroundColor: bg,
-        color: fg,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          width: 30,
-          height: 30,
-          borderRadius: 30,
-          alignItems: "center",
-          justifyContent: "center",
-          border: `1px solid ${accent}`,
-          color: accent,
-          fontWeight: 900,
-          fontSize: 14,
-        }}
-      >
-        ✓
-      </div>
-      <span
-        style={{
-          display: "flex",
-          flex: 1,
-          fontSize: 15,
-          lineHeight: 1.15,
-          fontWeight: 800,
-        }}
-      >
-        {text}
-      </span>
+    <div style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", paddingTop: story ? 28 : 22, borderTop: `1px solid ${muted}55`, fontSize: story ? 21 : 17, fontWeight: 900, letterSpacing: story ? 2.4 : 2 }}>
+      <span style={{ display: "flex", color }}>FASTCASH-GENEVE.CH</span>
+      <span style={{ display: "flex", color: muted }}>{label}</span>
     </div>
   );
 }
 
-function TechVisual({
-  width,
-  height,
-  logo,
-  image,
-  title,
-  subtitle,
-  price,
-  badge,
-  features,
-}: any) {
+function TechVisual({ height, image, title, subtitle, price, badge }: VisualProps) {
   const story = height > 1500;
-
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        overflow: "hidden",
-        backgroundColor: "#f6f7fb",
-        color: "#111111",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: 250,
-          height: 18,
-          backgroundColor: "#1547ff",
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          right: -130,
-          top: 125,
-          width: 430,
-          height: 430,
-          borderRadius: 430,
-          backgroundColor: "#e4ebff",
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          right: 54,
-          top: 72,
-          width: 115,
-          height: 115,
-          border: "1px solid #1547ff",
-          transform: "rotate(45deg)",
-        }}
-      />
+    <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: "column", position: "relative", backgroundColor: "#050914", color: "#ffffff", fontFamily: "Arial, sans-serif", padding: story ? "66px 66px 54px" : "52px 62px 44px", overflow: "hidden" }}>
+      <div style={{ display: "flex", position: "absolute", width: story ? 680 : 560, height: story ? 680 : 560, right: -150, top: -180, borderRadius: 999, background: "linear-gradient(135deg,#173bff,#00b8ff)", opacity: .9 }} />
+      <div style={{ display: "flex", position: "absolute", width: 330, height: 330, left: -210, bottom: 120, borderRadius: 999, border: "42px solid #173bff", opacity: .18 }} />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: story ? "60px 58px 20px" : "42px 58px 18px",
-          zIndex: 2,
-        }}
-      >
-        <Logo logo={logo} dark />
-        <div
-          style={{
-            display: "flex",
-            padding: "11px 18px",
-            borderRadius: 999,
-            border: "1px solid #1547ff",
-            color: "#1547ff",
-            fontSize: 14,
-            fontWeight: 900,
-            letterSpacing: 2,
-          }}
-        >
-          {badge}
-        </div>
+      <div style={{ display: "flex", position: "relative", alignItems: "center", justifyContent: "space-between" }}>
+        <Brand light />
+        <div style={{ display: "flex", padding: "11px 20px", borderRadius: 999, backgroundColor: "#ffffff", color: "#07101f", fontSize: 13, fontWeight: 900, letterSpacing: 2.4 }}>{badge}</div>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          padding: "15px 58px 0",
-          zIndex: 2,
-        }}
-      >
-        <span
-          style={{
-            display: "flex",
-            color: "#1547ff",
-            fontSize: 18,
-            fontWeight: 900,
-            letterSpacing: 5,
-            textTransform: "uppercase",
-          }}
-        >
-          {subtitle}
-        </span>
-        <span
-          style={{
-            display: "flex",
-            maxWidth: 880,
-            marginTop: 12,
-            fontSize: title.length > 55 ? 44 : title.length > 34 ? 55 : 66,
-            lineHeight: 1.02,
-            fontWeight: 900,
-          }}
-        >
-          {title}
-        </span>
-        <div
-          style={{
-            display: "flex",
-            width: 90,
-            height: 5,
-            marginTop: 17,
-            backgroundColor: "#1547ff",
-          }}
-        />
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          position: "relative",
-          margin: story ? "34px 58px 22px" : "26px 58px 20px",
-          minHeight: 0,
-          borderRadius: 30,
-          border: "1px solid #dfe4ef",
-          backgroundColor: "#ffffff",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: -100,
-            bottom: -150,
-            width: 480,
-            height: 480,
-            borderRadius: 480,
-            backgroundColor: "#eef2ff",
-          }}
-        />
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: 50,
-            top: 46,
-            width: story ? 650 : 610,
-            height: story ? 760 : 520,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {image ? (
-            <img
-              src={image}
-              alt=""
-              width={story ? 650 : 610}
-              height={story ? 760 : 520}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          ) : (
-            <span style={{ fontSize: 24, color: "#6e7480" }}>
-              Photo indisponible
-            </span>
-          )}
+      <div style={{ display: "flex", position: "relative", flex: 1, minHeight: 0, flexDirection: story ? "column" : "row", marginTop: story ? 58 : 40, gap: story ? 36 : 42 }}>
+        <div style={{ display: "flex", flex: story ? "0 0 auto" : "0 0 39%", flexDirection: "column", justifyContent: "center", zIndex: 2 }}>
+          <span style={{ display: "flex", color: "#69c9ff", fontSize: 15, fontWeight: 900, letterSpacing: 5, textTransform: "uppercase" }}>{subtitle}</span>
+          <span style={{ display: "flex", marginTop: 18, fontSize: title.length > 55 ? 44 : title.length > 35 ? 53 : 64, lineHeight: .96, fontWeight: 900, letterSpacing: -2.6 }}>{title}</span>
+          <div style={{ display: "flex", alignItems: "center", marginTop: 34, gap: 16 }}>
+            <div style={{ display: "flex", width: 54, height: 6, backgroundColor: "#18bfff" }} />
+            <span style={{ display: "flex", color: "#8d9ab5", fontSize: story ? 18 : 15, fontWeight: 800, letterSpacing: 2 }}>SÉLECTION FAST CASH</span>
+          </div>
+          <div style={{ display: "flex", marginTop: 26 }}><Price value={price} accent="#5bc9ff" light story={story} /></div>
+          <div style={{ display: "flex", marginTop: 22, padding: "13px 18px", alignSelf: "flex-start", border: "1px solid #274269", borderRadius: 999, color: "#d7e4f7", fontSize: story ? 21 : 17 }}>Disponible maintenant · Genève</div>
+          <div style={{ display: "flex", marginTop: 28, gap: 28, color: "#a6b8d3", fontSize: story ? 18 : 15, fontWeight: 800, letterSpacing: 1.5 }}>
+            <span style={{ display: "flex" }}>PRODUIT CONTRÔLÉ</span><span style={{ display: "flex" }}>RETRAIT À GENÈVE</span>
+          </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            position: "absolute",
-            top: 42,
-            right: 34,
-            width: 280,
-            gap: 10,
-          }}
-        >
-          {features.map((f: string) => (
-            <Feature
-              key={f}
-              text={f}
-              accent="#1547ff"
-              fg="#111111"
-              bg="#f9faff"
-              border="#dfe5f3"
-            />
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            position: "absolute",
-            left: 28,
-            bottom: 26,
-            minWidth: 310,
-            padding: "18px 24px",
-            borderRadius: 18,
-            backgroundColor: "#0d1e58",
-            color: "#ffffff",
-            border: "1px solid #1547ff",
-          }}
-        >
-          <span
-            style={{
-              display: "flex",
-              fontSize: 12,
-              letterSpacing: 4,
-              color: "#aebcff",
-            }}
-          >
-            PRIX
-          </span>
-          <span
-            style={{
-              display: "flex",
-              marginTop: 3,
-              fontSize: 46,
-              fontWeight: 900,
-            }}
-          >
-            {price} CHF
-          </span>
+        <div style={{ display: "flex", flex: 1, minHeight: story ? 900 : 0, position: "relative", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", position: "absolute", width: "88%", height: "88%", right: 0, bottom: 0, borderRadius: 48, background: "linear-gradient(145deg,#173bff,#0b1732 58%,#00a9e8)", transform: "rotate(4deg)" }} />
+          <div style={{ display: "flex", width: "92%", height: "92%", position: "relative", padding: story ? 34 : 24, alignItems: "center", justifyContent: "center", borderRadius: 46, backgroundColor: "#f7f8fb", border: "1px solid #4a6ab1", boxShadow: "0 32px 100px rgba(0,0,0,.38)" }}>
+            <ProductImage image={image} />
+          </div>
         </div>
       </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "18px 58px 32px",
-          color: "#59606c",
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: 1,
-        }}
-      >
-        <span style={{ display: "flex", color: "#1547ff" }}>
-          FASTCASH-GENEVE.CH
-        </span>
-        <span style={{ display: "flex" }}>
-          AUTHENTIFIÉ · GARANTIE · PAIEMENT SÉCURISÉ
-        </span>
-      </div>
+      <div style={{ display: "flex", position: "relative", marginTop: 30 }}><Footer color="#5bc9ff" muted="#75829c" label="FAST CASH · GENÈVE" story={story} /></div>
     </div>
   );
 }
 
-function LuxuryVisual({
-  height,
-  logo,
-  image,
-  title,
-  subtitle,
-  price,
-  badge,
-  features,
-}: any) {
+function LuxuryVisual({ height, image, title, subtitle, price, badge }: VisualProps) {
   const story = height > 1500;
-
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        overflow: "hidden",
-        backgroundColor: "#f5ecdd",
-        color: "#17120d",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          right: -120,
-          top: 0,
-          width: 470,
-          height: 470,
-          borderRadius: 470,
-          backgroundColor: "#ead8b3",
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: 16,
-          height: "100%",
-          backgroundColor: "#c99a2e",
-        }}
-      />
+    <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: "column", position: "relative", backgroundColor: "#eee7da", color: "#17120e", fontFamily: "Arial, sans-serif", padding: story ? "68px 68px 56px" : "54px 64px 44px", overflow: "hidden" }}>
+      <div style={{ display: "flex", position: "absolute", left: 0, top: 0, width: 18, height: "100%", backgroundColor: "#b78a37" }} />
+      <div style={{ display: "flex", position: "absolute", right: -120, top: -130, width: 440, height: 440, borderRadius: 999, border: "1px solid #c9ad75", opacity: .55 }} />
+      <div style={{ display: "flex", position: "absolute", right: -30, top: -40, width: 260, height: 260, borderRadius: 999, border: "1px solid #c9ad75", opacity: .38 }} />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: story ? "64px 60px 20px" : "46px 60px 18px",
-          zIndex: 2,
-        }}
-      >
-        <Logo logo={logo} dark />
-        <div
-          style={{
-            display: "flex",
-            padding: "11px 18px",
-            borderRadius: 999,
-            backgroundColor: "#19130d",
-            color: "#d8b65a",
-            fontSize: 14,
-            fontWeight: 900,
-            letterSpacing: 2,
-          }}
-        >
-          {badge}
+      <div style={{ display: "flex", position: "relative", alignItems: "center", justifyContent: "space-between" }}>
+        <Brand />
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ display: "flex", width: 44, height: 1, backgroundColor: "#9d762e" }} />
+          <span style={{ display: "flex", color: "#6c552d", fontSize: 12, fontWeight: 900, letterSpacing: 3 }}>{badge}</span>
         </div>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          padding: "16px 60px 0",
-          zIndex: 2,
-        }}
-      >
-        <span
-          style={{
-            display: "flex",
-            color: "#9c721d",
-            fontSize: 18,
-            fontWeight: 900,
-            letterSpacing: 5,
-            textTransform: "uppercase",
-          }}
-        >
-          {subtitle}
-        </span>
-        <span
-          style={{
-            display: "flex",
-            maxWidth: 900,
-            marginTop: 14,
-            fontFamily: "Georgia, serif",
-            fontSize: title.length > 55 ? 46 : title.length > 34 ? 57 : 70,
-            lineHeight: 1.01,
-            fontWeight: 700,
-          }}
-        >
-          {title}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          position: "relative",
-          margin: story ? "34px 60px 24px" : "27px 60px 20px",
-          minHeight: 0,
-          borderRadius: 34,
-          backgroundColor: "#fffaf2",
-          border: "1px solid #ddc89f",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: 70,
-            top: 80,
-            width: story ? 650 : 600,
-            height: story ? 790 : 540,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {image ? (
-            <img
-              src={image}
-              alt=""
-              width={story ? 650 : 600}
-              height={story ? 790 : 540}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          ) : (
-            <span style={{ fontSize: 24, color: "#7a6d5d" }}>
-              Photo indisponible
-            </span>
-          )}
+      <div style={{ display: "flex", position: "relative", flex: 1, minHeight: 0, marginTop: story ? 56 : 40, gap: story ? 42 : 50, flexDirection: story ? "column" : "row" }}>
+        <div style={{ display: "flex", flex: story ? "0 0 auto" : "0 0 38%", flexDirection: "column", justifyContent: "center" }}>
+          <span style={{ display: "flex", color: "#a17a31", fontSize: 14, fontWeight: 900, letterSpacing: 5.5, textTransform: "uppercase" }}>{subtitle}</span>
+          <span style={{ display: "flex", marginTop: 22, fontFamily: "Georgia, serif", fontSize: title.length > 55 ? 46 : title.length > 35 ? 55 : 67, lineHeight: .96, fontWeight: 700, letterSpacing: -1.3 }}>{title}</span>
+          <span style={{ display: "flex", marginTop: 24, color: "#756b5e", fontFamily: "Georgia, serif", fontSize: story ? 27 : 23, fontStyle: "italic" }}>Une pièce sélectionnée à Genève.</span>
+          <span style={{ display: "flex", marginTop: 10, color: "#9d762e", fontSize: story ? 17 : 14, fontWeight: 900, letterSpacing: 2.4 }}>AUTHENTICITÉ · ÉTAT · DÉTAILS CONTRÔLÉS</span>
+          <div style={{ display: "flex", width: 96, height: 2, margin: "30px 0 26px", backgroundColor: "#b88a32" }} />
+          <Price value={price} accent="#9d762e" story={story} />
+          <span style={{ display: "flex", marginTop: 20, color: "#74695b", fontSize: story ? 20 : 17, fontWeight: 700, letterSpacing: .4 }}>EN BOUTIQUE & SUR FASTCASH-GENEVE.CH</span>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            right: 34,
-            top: 38,
-            width: 250,
-            height: 250,
-            borderRadius: 250,
-            border: "1px solid #d7bc83",
-          }}
-        />
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            right: 77,
-            top: 81,
-            width: 165,
-            height: 165,
-            borderRadius: 165,
-            backgroundColor: "#f0dfbf",
-          }}
-        />
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            position: "absolute",
-            right: 35,
-            bottom: 38,
-            width: 290,
-            gap: 10,
-          }}
-        >
-          {features.map((f: string) => (
-            <Feature
-              key={f}
-              text={f}
-              accent="#b98521"
-              fg="#17120d"
-              bg="#fffdf8"
-              border="#e5d7bd"
-            />
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            position: "absolute",
-            left: 34,
-            bottom: 30,
-            minWidth: 330,
-            padding: "19px 26px",
-            borderRadius: 18,
-            backgroundColor: "#17120d",
-            color: "#d8b65a",
-            border: "1px solid #b98521",
-          }}
-        >
-          <span
-            style={{
-              display: "flex",
-              fontSize: 12,
-              letterSpacing: 4,
-              color: "#a99b84",
-            }}
-          >
-            PRIX
-          </span>
-          <span
-            style={{
-              display: "flex",
-              marginTop: 3,
-              fontFamily: "Georgia, serif",
-              fontSize: 47,
-              fontWeight: 700,
-            }}
-          >
-            {price} CHF
-          </span>
+        <div style={{ display: "flex", flex: 1, minHeight: story ? 850 : 0, position: "relative", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", position: "absolute", width: "86%", height: "94%", right: 0, top: "3%", border: "1px solid #b88a32", borderRadius: 76 }} />
+          <div style={{ display: "flex", width: "90%", height: "90%", position: "relative", padding: story ? 34 : 24, alignItems: "center", justifyContent: "center", borderRadius: 64, backgroundColor: "#fffdf8", boxShadow: "0 28px 80px rgba(73,55,27,.13)" }}>
+            <ProductImage image={image} />
+          </div>
+          <div style={{ display: "flex", position: "absolute", right: -6, bottom: story ? 70 : 46, padding: "13px 18px", backgroundColor: "#17120e", color: "#d8b768", fontSize: story ? 17 : 14, fontWeight: 900, letterSpacing: 2.4 }}>SÉLECTION FAST CASH</div>
         </div>
       </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "18px 60px 34px",
-          color: "#786b58",
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: 1,
-        }}
-      >
-        <span style={{ display: "flex", color: "#9c721d" }}>
-          FASTCASH-GENEVE.CH
-        </span>
-        <span style={{ display: "flex" }}>
-          LUXE · AUTHENTIFIÉ · GENÈVE
-        </span>
-      </div>
+      <div style={{ display: "flex", position: "relative", marginTop: 30 }}><Footer color="#9d762e" muted="#7d7468" label="GENÈVE · SUISSE" story={story} /></div>
     </div>
   );
 }
 
-function WatchesVisual({
-  height,
-  logo,
-  image,
-  title,
-  subtitle,
-  price,
-  badge,
-  features,
-}: any) {
+function WatchesVisual({ height, image, title, subtitle, price, badge }: VisualProps) {
   const story = height > 1500;
-
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        overflow: "hidden",
-        backgroundColor: "#050505",
-        color: "#f7f1e4",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          left: -180,
-          top: 300,
-          width: 620,
-          height: 620,
-          borderRadius: 620,
-          border: "1px solid #392d14",
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          right: -240,
-          bottom: 180,
-          width: 700,
-          height: 700,
-          borderRadius: 700,
-          border: "1px solid #2e2513",
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: 8,
-          backgroundColor: "#d4af37",
-        }}
-      />
+    <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: "column", position: "relative", backgroundColor: "#050504", color: "#f6f0e4", fontFamily: "Arial, sans-serif", padding: story ? "68px 68px 56px" : "54px 64px 44px", overflow: "hidden" }}>
+      <div style={{ display: "flex", position: "absolute", left: 80, right: 80, top: story ? 235 : 190, height: 1, backgroundColor: "#4f4023" }} />
+      <div style={{ display: "flex", position: "relative", alignItems: "center", justifyContent: "space-between" }}>
+        <Brand light />
+        <div style={{ display: "flex", color: "#d4af37", fontSize: 12, fontWeight: 900, letterSpacing: 3 }}>{badge}</div>
+      </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: story ? "64px 58px 18px" : "45px 58px 18px",
-          zIndex: 3,
-        }}
-      >
-        <Logo logo={logo} />
-        <div
-          style={{
-            display: "flex",
-            padding: "11px 18px",
-            borderRadius: 999,
-            border: "1px solid #d4af37",
-            color: "#d4af37",
-            fontSize: 14,
-            fontWeight: 900,
-            letterSpacing: 2,
-          }}
-        >
-          ◆ {badge}
+      <div style={{ display: "flex", position: "relative", flexDirection: "column", alignItems: "center", textAlign: "center", marginTop: story ? 58 : 42 }}>
+        <span style={{ display: "flex", color: "#b69a5a", fontSize: 13, fontWeight: 900, letterSpacing: 7, textTransform: "uppercase" }}>{subtitle}</span>
+        <span style={{ display: "flex", maxWidth: 900, marginTop: 20, fontFamily: "Georgia, serif", fontSize: title.length > 48 ? 40 : title.length > 30 ? 48 : 58, lineHeight: 1.02, fontWeight: 700 }}>{title}</span>
+      </div>
+
+      <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative", margin: story ? "40px 62px 24px" : "30px 72px 18px", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ display: "flex", position: "absolute", width: "100%", height: "100%", border: "1px solid #6a5426", backgroundColor: "#0b0a08" }} />
+        <div style={{ display: "flex", width: "96%", height: "94%", position: "relative", padding: story ? 34 : 24, alignItems: "center", justifyContent: "center", backgroundColor: "#fffdf8" }}>
+          <ProductImage image={image} />
         </div>
+        <div style={{ display: "flex", position: "absolute", left: -18, top: 36, width: 3, height: 110, backgroundColor: "#d4af37" }} />
+        <div style={{ display: "flex", position: "absolute", right: -18, bottom: 36, width: 3, height: 110, backgroundColor: "#d4af37" }} />
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          padding: "15px 58px 0",
-          zIndex: 3,
-        }}
-      >
-        <span
-          style={{
-            display: "flex",
-            color: "#d4af37",
-            fontSize: 18,
-            fontWeight: 900,
-            letterSpacing: 5,
-            textTransform: "uppercase",
-          }}
-        >
-          {subtitle}
-        </span>
-        <span
-          style={{
-            display: "flex",
-            maxWidth: 910,
-            marginTop: 14,
-            fontSize: title.length > 55 ? 45 : title.length > 34 ? 56 : 68,
-            lineHeight: 1.02,
-            fontWeight: 900,
-          }}
-        >
-          {title}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          position: "relative",
-          margin: story ? "32px 58px 22px" : "26px 58px 20px",
-          minHeight: 0,
-          borderRadius: 34,
-          border: "1px solid #3a2f17",
-          backgroundColor: "#0b0b0b",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: story ? 115 : 105,
-            top: story ? 130 : 90,
-            width: story ? 650 : 610,
-            height: story ? 650 : 510,
-            borderRadius: story ? 650 : 610,
-            backgroundColor: "#171207",
-            border: "1px solid #3e3014",
-          }}
-        />
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: story ? 155 : 145,
-            top: story ? 170 : 125,
-            width: story ? 570 : 530,
-            height: story ? 570 : 440,
-            borderRadius: story ? 570 : 530,
-            border: "1px solid #d4af37",
-          }}
-        />
-
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: 75,
-            top: story ? 100 : 70,
-            width: story ? 720 : 650,
-            height: story ? 830 : 565,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {image ? (
-            <img
-              src={image}
-              alt=""
-              width={story ? 720 : 650}
-              height={story ? 830 : 565}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          ) : (
-            <span style={{ fontSize: 24, color: "#a89e8f" }}>
-              Photo indisponible
-            </span>
-          )}
+      <div style={{ display: "flex", position: "relative", alignItems: "flex-end", justifyContent: "space-between", marginTop: story ? 28 : 18 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ display: "flex", color: "#8f8164", fontSize: story ? 20 : 16, fontWeight: 900, letterSpacing: story ? 3.2 : 2.6 }}>DISPONIBLE À GENÈVE</span>
+          <span style={{ display: "flex", marginTop: 8, color: "#c5b99e", fontSize: story ? 24 : 19 }}>Boutique & achat en ligne</span>
+          <span style={{ display: "flex", marginTop: 10, color: "#d4af37", fontSize: story ? 18 : 14, fontWeight: 900, letterSpacing: story ? 2.4 : 2 }}>PRODUIT CONTRÔLÉ · SÉLECTION FAST CASH</span>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            position: "absolute",
-            top: 40,
-            right: 32,
-            width: 275,
-            gap: 10,
-          }}
-        >
-          {features.map((f: string) => (
-            <Feature
-              key={f}
-              text={f}
-              accent="#d4af37"
-              fg="#f7f1e4"
-              bg="#101010"
-              border="#3a301a"
-            />
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            position: "absolute",
-            left: 34,
-            bottom: 30,
-            minWidth: 335,
-            padding: "20px 26px",
-            borderRadius: 18,
-            backgroundColor: "#070707",
-            color: "#d4af37",
-            border: "1px solid #d4af37",
-          }}
-        >
-          <span
-            style={{
-              display: "flex",
-              fontSize: 12,
-              letterSpacing: 4,
-              color: "#9b8b67",
-            }}
-          >
-            PRIX
-          </span>
-          <span
-            style={{
-              display: "flex",
-              marginTop: 3,
-              fontSize: 48,
-              fontWeight: 900,
-            }}
-          >
-            {price} CHF
-          </span>
-        </div>
+        <Price value={price} accent="#d4af37" light story={story} />
       </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          padding: "5px 58px 18px",
-        }}
-      >
-        {["AUTHENTIFIÉ", "GARANTIE 1 AN", "PAIEMENT SÉCURISÉ", "GENÈVE"].map(
-          (label) => (
-            <div
-              key={label}
-              style={{
-                display: "flex",
-                flex: 1,
-                minHeight: 52,
-                alignItems: "center",
-                justifyContent: "center",
-                borderTop: "1px solid #3a301a",
-                borderBottom: "1px solid #3a301a",
-                color: "#b8ad95",
-                fontSize: 12,
-                fontWeight: 900,
-                letterSpacing: 1,
-              }}
-            >
-              <span style={{ display: "flex", color: "#d4af37", marginRight: 8 }}>
-                ◇
-              </span>
-              {label}
-            </div>
-          )
-        )}
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          padding: "12px 58px 32px",
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: 2,
-          color: "#8e846e",
-        }}
-      >
-        <span style={{ display: "flex", color: "#d4af37" }}>
-          FASTCASH-GENEVE.CH
-        </span>
-        <span style={{ display: "flex" }}>MONTRES · BIJOUX · LUXE</span>
-      </div>
+      <div style={{ display: "flex", position: "relative", marginTop: story ? 36 : 28 }}><Footer color="#d4af37" muted="#827866" label="SÉLECTION FAST CASH" story={story} /></div>
     </div>
   );
 }
@@ -964,61 +256,44 @@ export async function GET(request: Request) {
   await requireAdminSession();
 
   const { searchParams } = new URL(request.url);
-
   const rawTheme = searchParams.get("theme");
-  const theme: Theme =
-    rawTheme === "tech" || rawTheme === "luxury" ? rawTheme : "watches";
-
+  const theme: Theme = rawTheme === "tech" || rawTheme === "luxury" ? rawTheme : "watches";
   const format = searchParams.get("format") === "story" ? "story" : "post";
   const width = 1080;
   const height = format === "story" ? 1920 : 1350;
 
-  const title = clean(searchParams.get("title"), "Produit FAST CASH", 100);
-  const subtitle = clean(
-    searchParams.get("subtitle"),
-    searchParams.get("category") || searchParams.get("brand") || "Sélection FAST CASH",
-    55
-  );
-  const price = clean(searchParams.get("price"), "0.00", 18);
-  const badge = clean(searchParams.get("badge"), "NOUVEAUTÉ", 24);
+  const rawZoom = Number(searchParams.get("zoom") || "0");
+  const zoom: -1 | 0 | 1 = rawZoom < 0 ? -1 : rawZoom > 0 ? 1 : 0;
 
-  const features = [
-    clean(searchParams.get("feature1"), "Produit contrôlé et vérifié", 48),
-    clean(searchParams.get("feature2"), "Garantie FAST CASH", 48),
-    clean(searchParams.get("feature3"), "Disponible à Genève", 48),
-  ];
+  const productId = searchParams.get("productId");
+  const product = productId
+    ? await prisma.product.findUnique({ where: { id: productId }, select: { image: true } })
+    : null;
 
-  const imageUrl = searchParams.get("image") || null;
+  const productImage = await imageToDataUri(product?.image, request.url, zoom);
+  const rawTitle = clean(searchParams.get("title"), "Produit FAST CASH", 100);
+  const subtitle = clean(searchParams.get("subtitle"), searchParams.get("category") || searchParams.get("brand") || "Sélection FAST CASH", 55);
+  const title = socialTitle(rawTitle, subtitle);
+  const rawPrice = clean(searchParams.get("price"), "0.00", 18).replace(/\s*CHF$/i, "").replace(/\s/g, "").replace(",", ".");
+  const numericPrice = Number(rawPrice);
+  const price = Number.isFinite(numericPrice)
+    ? new Intl.NumberFormat("fr-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericPrice)
+    : rawPrice;
+  const badge = clean(searchParams.get("badge"), "DISPONIBLE", 24).toUpperCase();
 
-  const [productImage, logoLight, logoDark] = await Promise.all([
-    imageToDataUri(imageUrl),
-    imageToDataUri(new URL("/images/logo-fastcash-white.png", request.url).toString()),
-    imageToDataUri(new URL("/images/logo-fastcash.jpg", request.url).toString()),
-  ]);
-
-  const props = {
-    width,
-    height,
-    logo: theme === "watches" ? logoLight : logoDark,
-    image: productImage,
-    title,
-    subtitle,
-    price,
-    badge,
-    features,
-  };
-
-  const element =
-    theme === "tech" ? (
-      <TechVisual {...props} />
-    ) : theme === "luxury" ? (
-      <LuxuryVisual {...props} />
-    ) : (
-      <WatchesVisual {...props} />
-    );
+  const props: VisualProps = { width, height, image: productImage, title, subtitle, price, badge };
+  const element = theme === "tech"
+    ? <TechVisual {...props} />
+    : theme === "luxury"
+      ? <LuxuryVisual {...props} />
+      : <WatchesVisual {...props} />;
 
   try {
-    return new ImageResponse(element, { width, height });
+    return new ImageResponse(element, {
+      width,
+      height,
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (error) {
     console.error("FAST CASH visual generation error:", error);
     return new Response("Impossible de générer le visuel.", { status: 500 });

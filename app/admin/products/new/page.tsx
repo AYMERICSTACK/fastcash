@@ -2,11 +2,11 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import AdminShell from "../../AdminShell";
-import ProductImageField from "../ProductImageField";
+import NewProductGalleryField from "../NewProductGalleryField";
 import styles from "../../admin.module.css";
 import { prisma } from "@/lib/prisma";
 import { getShopSettings } from "@/lib/settings";
-import { saveProductImageFromForm } from "@/lib/admin-product-images";
+import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { requireAdminSession } from "@/lib/session";
 
 function normalizeSlug(value: string) {
@@ -130,6 +130,7 @@ export default async function NewProductPage() {
     const slugInput = String(formData.get("slug") || "").trim();
     const referenceInput = String(formData.get("reference") || "").trim();
     const imageInput = String(formData.get("image") || "").trim();
+    const galleryFiles = formData.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0);
     const description = String(formData.get("description") || "").trim();
     const categoryId = String(formData.get("categoryId") || "").trim();
     const newCategoryName = String(formData.get("newCategoryName") || "").trim();
@@ -156,14 +157,24 @@ export default async function NewProductPage() {
     const reference = referenceInput || (await getNextProductReference());
     const finalCategoryId = await getOrCreateCategoryId(categoryId, newCategoryName);
     const finalBrandId = await getOrCreateBrandId(brandId, newBrandName);
-    const image = await saveProductImageFromForm(formData.get("imageFile"), imageInput, slug);
+    if (galleryFiles.length > 12) {
+      throw new Error("Vous pouvez ajouter jusqu’à 12 photos par produit.");
+    }
+
+    const uploadedGallery = [];
+    for (const file of galleryFiles) {
+      const uploaded = await uploadMediaToCloudinary(file);
+      uploadedGallery.push({ file, uploaded });
+    }
+
+    const primaryImage = uploadedGallery[0]?.uploaded.secure_url || imageInput || null;
 
     const product = await prisma.product.create({
       data: {
         name,
         slug,
         reference,
-        image,
+        image: primaryImage,
         description: description || null,
         categoryId: finalCategoryId,
         brandId: finalBrandId,
@@ -171,6 +182,27 @@ export default async function NewProductPage() {
         stock,
         condition,
         active: visibility === "active",
+        media: uploadedGallery.length
+          ? {
+              create: uploadedGallery.map(({ file, uploaded }, index) => ({
+                position: index,
+                isPrimary: index === 0,
+                alt: name,
+                media: {
+                  create: {
+                    url: uploaded.secure_url,
+                    publicId: uploaded.public_id,
+                    fileName: file.name || uploaded.original_filename,
+                    mimeType: file.type,
+                    format: uploaded.format,
+                    width: uploaded.width,
+                    height: uploaded.height,
+                    bytes: uploaded.bytes,
+                  },
+                },
+              })),
+            }
+          : undefined,
       },
       select: {
         id: true,
@@ -185,7 +217,7 @@ export default async function NewProductPage() {
     revalidatePath("/sitemap.xml");
     revalidatePath(`/produits/${product.slug}`);
 
-    redirect(`/admin/products/${product.id}`);
+    redirect(`/pilotage/produits/${product.id}?flash=productCreated`);
   }
 
   return (
@@ -226,7 +258,7 @@ export default async function NewProductPage() {
               <small>Laissez vide : FAST CASH génère automatiquement une référence unique.</small>
             </label>
 
-            <ProductImageField />
+            <NewProductGalleryField />
 
             <label>
               <span>Description</span>

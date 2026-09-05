@@ -7,6 +7,7 @@ const PILOTAGE_ROUTES: Record<string, string> = {
   "/pilotage/commandes": "/admin/orders",
   "/pilotage/offres": "/admin/offers",
   "/pilotage/marketing": "/admin/marketing",
+  "/pilotage/marketing/studio": "/admin/marketing/studio",
   "/pilotage/avis": "/admin/reviews",
   "/pilotage/produits": "/admin/products",
   "/pilotage/medias": "/admin/media",
@@ -27,6 +28,7 @@ function resolvePilotagePath(pathname: string) {
   const mappings = [
     ["/pilotage/commandes/", "/admin/orders/"],
     ["/pilotage/offres/", "/admin/offers/"],
+    ["/pilotage/marketing/", "/admin/marketing/"],
     ["/pilotage/produits/", "/admin/products/"],
     ["/pilotage/categories/", "/admin/categories/"],
     ["/pilotage/marques/", "/admin/brands/"],

@@ -27,6 +27,42 @@ function getStockLabel(stock: number, lowStockThreshold: number) {
   return "Disponible";
 }
 
+
+function renderInlineProductText(value: string) {
+  return value
+    .split(/(\*\*[^*]+\*\*)/g)
+    .filter(Boolean)
+    .map((part, index) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={`${index}-${part}`}>{part.slice(2, -2)}</strong>
+      ) : (
+        <span key={`${index}-${part}`}>{part}</span>
+      ),
+    );
+}
+
+function ProductDescription({ value }: { value: string }) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const sections = normalized.split(/\s*·\s*/).filter(Boolean);
+
+  return (
+    <div className={styles.productDescriptionContent}>
+      {sections.map((section, index) =>
+        index === 0 ? (
+          <p key={`${index}-${section}`} className={styles.productDescriptionLead}>
+            {renderInlineProductText(section)}
+          </p>
+        ) : (
+          <div key={`${index}-${section}`} className={styles.productDescriptionItem}>
+            <span className={styles.productDescriptionDot} aria-hidden="true" />
+            <p>{renderInlineProductText(section)}</p>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
 function normalizeSlug(value: string) {
   return value
     .normalize("NFD")
@@ -290,7 +326,20 @@ export default async function ProductDetailPage({
           </div>
 
           <h2>{formatAdminPrice(product.price, settings.defaultCurrency)}</h2>
-          <p>{product.description || "Description produit FAST CASH."}</p>
+
+          {product.description ? (
+            <div className={styles.productDescriptionBlock}>
+              <div className={styles.productDescriptionPreview}>
+                <ProductDescription value={product.description} />
+              </div>
+              <details className={styles.productDescriptionDetails}>
+                <summary>Voir toute la description</summary>
+                <ProductDescription value={product.description} />
+              </details>
+            </div>
+          ) : (
+            <p className={styles.productDescriptionEmpty}>Description produit FAST CASH.</p>
+          )}
 
           <div className={styles.productBadges}>
             <span className={styles.status}>{getStockLabel(product.stock, settings.lowStockThreshold)}</span>

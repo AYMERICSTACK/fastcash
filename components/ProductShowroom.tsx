@@ -17,10 +17,44 @@ type ProductShowroomProps = {
   relatedProducts: Product[];
 };
 
+function cleanProductDescription(value?: string | null) {
+  if (!value) return "";
+
+  return value
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/p\s*>/gi, "\n\n")
+    .replace(/<\/?li\b[^>]*>/gi, (tag) => (tag.startsWith("</") ? "\n" : "• "))
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+\*\*(?=[^*]+\*\*)/g, "\n\n**")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function renderDescriptionLine(line: string) {
+  const chunks = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+
+  return chunks.map((chunk, index) => {
+    if (chunk.startsWith("**") && chunk.endsWith("**")) {
+      return <strong key={`${chunk}-${index}`}>{chunk.slice(2, -2)}</strong>;
+    }
+
+    return <span key={`${chunk}-${index}`}>{chunk}</span>;
+  });
+}
+
 export default function ProductShowroom({ product, relatedProducts }: ProductShowroomProps) {
   const { locale } = useI18n();
   const gallery = product.images?.length ? product.images : product.image ? [{ id: "primary", url: product.image, alt: product.name, isPrimary: true }] : [];
   const [activeImage, setActiveImage] = useState(gallery.find((image) => image.isPrimary)?.url ?? gallery[0]?.url ?? "");
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const publicDescription = cleanProductDescription(product.description);
+  const descriptionParagraphs = publicDescription.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
   const stockStatus = getStockStatus(product.stock);
   const categoryLabel = translateCategoryName(product.category, locale);
   const headingMeta = product.brand ? `${product.brand} · ${categoryLabel}` : categoryLabel;
@@ -66,6 +100,9 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
       locale === "en"
         ? "Pre-owned item checked and available at FAST CASH Geneva according to in-store stock. For any question, our team can confirm condition and availability before your visit."
         : "Produit d'occasion contrôlé et disponible chez FAST CASH Genève selon stock en boutique. Pour toute question, notre équipe peut confirmer l'état et la disponibilité avant votre passage.",
+    descriptionTitle: locale === "en" ? "Product description" : "Description du produit",
+    descriptionMore: locale === "en" ? "Read full description" : "Voir toute la description",
+    descriptionLess: locale === "en" ? "Show less" : "Réduire",
     relatedKicker: locale === "en" ? "FAST CASH selection" : "Sélection FAST CASH",
     relatedTitle: locale === "en" ? "You may also like" : "Vous pourriez aussi aimer",
     relatedText:
@@ -189,7 +226,30 @@ export default function ProductShowroom({ product, relatedProducts }: ProductSho
             </div>
           </div>
 
-          <p className="muted premium-product-description">{copy.description}</p>
+          {publicDescription ? (
+            <section className="premium-product-description-card" aria-labelledby="product-description-title">
+              <p className="hero-kicker">{copy.descriptionTitle}</p>
+              <div
+                className={`premium-product-description-content${descriptionExpanded ? " is-expanded" : ""}`}
+              >
+                {descriptionParagraphs.map((paragraph, index) => (
+                  <p key={`${index}-${paragraph.slice(0, 24)}`}>{renderDescriptionLine(paragraph)}</p>
+                ))}
+              </div>
+              {publicDescription.length > 420 ? (
+                <button
+                  type="button"
+                  className="premium-product-description-toggle"
+                  onClick={() => setDescriptionExpanded((value) => !value)}
+                  aria-expanded={descriptionExpanded}
+                >
+                  {descriptionExpanded ? copy.descriptionLess : copy.descriptionMore}
+                </button>
+              ) : null}
+            </section>
+          ) : (
+            <p className="muted premium-product-description">{copy.description}</p>
+          )}
 
           <AddToCartButton product={product} />
           <div className="product-negotiation-actions"><OfferButton product={product} /><FavoriteButton productId={product.id} /></div>
