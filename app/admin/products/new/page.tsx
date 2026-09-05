@@ -6,7 +6,6 @@ import NewProductGalleryField from "../NewProductGalleryField";
 import styles from "../../admin.module.css";
 import { prisma } from "@/lib/prisma";
 import { getShopSettings } from "@/lib/settings";
-import { uploadMediaToCloudinary } from "@/lib/cloudinary";
 import { requireAdminSession } from "@/lib/session";
 
 function normalizeSlug(value: string) {
@@ -130,7 +129,14 @@ export default async function NewProductPage() {
     const slugInput = String(formData.get("slug") || "").trim();
     const referenceInput = String(formData.get("reference") || "").trim();
     const imageInput = String(formData.get("image") || "").trim();
-    const galleryFiles = formData.getAll("galleryFiles").filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    const galleryAssetsRaw = String(formData.get("galleryAssets") || "[]");
+    let galleryAssets: Array<{ url: string; publicId: string; fileName: string; mimeType: string; format: string; width: number; height: number; bytes: number }> = [];
+    try {
+      const parsed = JSON.parse(galleryAssetsRaw);
+      if (Array.isArray(parsed)) galleryAssets = parsed.slice(0, 12);
+    } catch {
+      galleryAssets = [];
+    }
     const description = String(formData.get("description") || "").trim();
     const categoryId = String(formData.get("categoryId") || "").trim();
     const newCategoryName = String(formData.get("newCategoryName") || "").trim();
@@ -157,17 +163,11 @@ export default async function NewProductPage() {
     const reference = referenceInput || (await getNextProductReference());
     const finalCategoryId = await getOrCreateCategoryId(categoryId, newCategoryName);
     const finalBrandId = await getOrCreateBrandId(brandId, newBrandName);
-    if (galleryFiles.length > 12) {
+    if (galleryAssets.length > 12) {
       throw new Error("Vous pouvez ajouter jusqu’à 12 photos par produit.");
     }
 
-    const uploadedGallery = [];
-    for (const file of galleryFiles) {
-      const uploaded = await uploadMediaToCloudinary(file);
-      uploadedGallery.push({ file, uploaded });
-    }
-
-    const primaryImage = uploadedGallery[0]?.uploaded.secure_url || imageInput || null;
+    const primaryImage = galleryAssets[0]?.url || imageInput || null;
 
     const product = await prisma.product.create({
       data: {
@@ -182,22 +182,22 @@ export default async function NewProductPage() {
         stock,
         condition,
         active: visibility === "active",
-        media: uploadedGallery.length
+        media: galleryAssets.length
           ? {
-              create: uploadedGallery.map(({ file, uploaded }, index) => ({
+              create: galleryAssets.map((asset, index) => ({
                 position: index,
                 isPrimary: index === 0,
                 alt: name,
                 media: {
                   create: {
-                    url: uploaded.secure_url,
-                    publicId: uploaded.public_id,
-                    fileName: file.name || uploaded.original_filename,
-                    mimeType: file.type,
-                    format: uploaded.format,
-                    width: uploaded.width,
-                    height: uploaded.height,
-                    bytes: uploaded.bytes,
+                    url: asset.url,
+                    publicId: asset.publicId,
+                    fileName: asset.fileName,
+                    mimeType: asset.mimeType,
+                    format: asset.format,
+                    width: asset.width,
+                    height: asset.height,
+                    bytes: asset.bytes,
                   },
                 },
               })),
