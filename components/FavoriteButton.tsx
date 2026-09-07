@@ -4,6 +4,40 @@ import { Heart, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+type FavoriteSnapshot = { authenticated: boolean; ids: string[] };
+let snapshot: FavoriteSnapshot | null = null;
+let pending: Promise<FavoriteSnapshot> | null = null;
+let snapshotExpires = 0;
+
+function loadFavoriteSnapshot(): Promise<FavoriteSnapshot> {
+  if (snapshot && Date.now() < snapshotExpires) return Promise.resolve(snapshot);
+  if (!pending) {
+    pending = fetch("/api/favorites?ids=1", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Favorites unavailable");
+        const data = await response.json();
+        return {
+          authenticated: !!data.authenticated,
+          ids: Array.isArray(data.ids) ? data.ids.map(String) : [],
+        };
+      })
+      .then((data) => { snapshot = data; snapshotExpires = Date.now() + 30000; return data; })
+      .finally(() => { pending = null; });
+  }
+  return pending;
+}
+
+function updateFavoriteSnapshot(id: string, active: boolean) {
+  if (!snapshot) return;
+  snapshot = {
+    ...snapshot,
+    ids: active
+      ? [...new Set([...snapshot.ids, id])]
+      : snapshot.ids.filter((value) => value !== id),
+  };
+}
+
+
 export default function FavoriteButton({
   productId,
   compact = false,
@@ -19,27 +53,14 @@ export default function FavoriteButton({
 
   useEffect(() => {
     let cancelled = false;
-
-    fetch(`/api/favorites?productId=${encodeURIComponent(id)}`, {
-      cache: "no-store",
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        const isAuthenticated = !!data?.authenticated;
-        setAuthenticated(isAuthenticated);
-        setActive(isAuthenticated ? !!data?.favorite : false);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAuthenticated(false);
-          setActive(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    loadFavoriteSnapshot().then((data) => {
+      if (cancelled) return;
+      setAuthenticated(data.authenticated);
+      setActive(data.authenticated && data.ids.includes(id));
+    }).catch(() => {
+      if (!cancelled) setAuthenticated(false);
+    });
+    return () => { cancelled = true; };
   }, [id]);
 
   async function toggle() {
@@ -74,6 +95,7 @@ export default function FavoriteButton({
       }
 
       setActive(next);
+      updateFavoriteSnapshot(id, next);
     } catch {
       // On conserve l'état précédent si la requête échoue.
     } finally {

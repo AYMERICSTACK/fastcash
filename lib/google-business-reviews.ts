@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getGoogleBusinessConnection } from "@/lib/google-business-oauth";
 export type GoogleBusinessReview = {
   id: string;
@@ -70,7 +71,7 @@ async function getAccessToken(refreshTokenOverride?: string | null) {
   return payload.access_token ?? null;
 }
 
-export async function getGoogleBusinessReviews(): Promise<GoogleBusinessReviewsData | null> {
+async function fetchGoogleBusinessReviews(): Promise<GoogleBusinessReviewsData | null> {
   try {
     const connection = await getGoogleBusinessConnection().catch(() => null);
     const accountId = connection?.accountId || process.env.GOOGLE_BUSINESS_ACCOUNT_ID;
@@ -134,3 +135,10 @@ export async function getGoogleBusinessReviews(): Promise<GoogleBusinessReviewsD
     return null;
   }
 }
+
+// Cache only public review data, never OAuth credentials or customer data.
+export const getGoogleBusinessReviews = unstable_cache(
+  fetchGoogleBusinessReviews,
+  ["fastcash-google-reviews-v1"],
+  { revalidate: 3600, tags: ["fastcash-reviews"] },
+);
