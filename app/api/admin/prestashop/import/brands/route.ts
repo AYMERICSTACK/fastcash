@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateBrandCache } from "@/lib/cache-invalidation";
 import { assertValidSqlFile } from "@/lib/prestashop";
 import { importPrestashopBrands } from "@/lib/prestashop/importer/brands";
 import { prisma } from "@/lib/prisma";
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     const content = await upload.text();
     const report = await importPrestashopBrands({ content, prisma });
 
+    invalidateBrandCache();
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

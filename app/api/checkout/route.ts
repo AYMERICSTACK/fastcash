@@ -4,7 +4,7 @@ import { products, type Product } from "@/lib/products";
 import { prisma } from "@/lib/prisma";
 import { toCatalogProduct } from "@/lib/public-categories";
 import { convertFromCHF, normalizeCurrency } from "@/lib/currency";
-import { buildOrderReference, getShopSettings } from "@/lib/settings";
+import { buildOrderReference, getShopSettingsFresh } from "@/lib/settings";
 import { getShippingFeeCHF, normalizeShippingMethod, resolveCoupon } from "@/lib/checkout-rules";
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit";
 import { getStripeClient } from "@/lib/stripe";
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const settings = await getShopSettings();
+    const settings = await getShopSettingsFresh();
     if (!settings.paymentCardEnabled) {
       return NextResponse.json({ error: "Le paiement en ligne est actuellement indisponible." }, { status: 400 });
     }

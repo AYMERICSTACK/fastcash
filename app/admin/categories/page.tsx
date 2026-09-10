@@ -1,3 +1,4 @@
+import { invalidateCategoryCache } from "@/lib/cache-invalidation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -64,6 +65,7 @@ export default async function AdminCategoriesPage({
     const requestedSlug = normalizeSlug(slugInput || name);
 
     if (RESERVED_CATEGORY_SLUGS.has(requestedSlug)) {
+      invalidateCategoryCache();
       redirect("/admin/categories?flash=reserved-category");
     }
 
@@ -78,6 +80,7 @@ export default async function AdminCategoriesPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
+    invalidateCategoryCache();
     redirect("/admin/categories?flash=categoryCreated");
   }
 

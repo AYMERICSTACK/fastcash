@@ -1,3 +1,4 @@
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import Image from "next/image";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -232,6 +233,8 @@ export default async function ProductDetailPage({
       revalidatePath(`/produits/${productSlug}`);
     }
 
+    invalidateCatalogCache();
+
     redirect(`/pilotage/produits/${productId}?flash=productSaved`);
   }
 
@@ -283,6 +286,7 @@ export default async function ProductDetailPage({
     if (productSlug) {
       revalidatePath(`/produits/${productSlug}`);
     }
+    invalidateCatalogCache();
     redirect("/pilotage/produits?flash=productDeleted");
   }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import { assertValidSqlFile } from "@/lib/prestashop";
 import { importPrestashopStock } from "@/lib/prestashop/importer/stock";
 import { prisma } from "@/lib/prisma";
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
       content: await upload.text(),
       prisma,
     });
+    invalidateCatalogCache();
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

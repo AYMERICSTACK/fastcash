@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 
@@ -29,16 +30,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!product) return NextResponse.json({ error: "Produit introuvable." }, { status: 404 });
 
     if (body.action === "attach" && body.mediaId) {
+      const mediaId = body.mediaId;
       const count = await prisma.productMedia.count({ where: { productId } });
       await prisma.productMedia.upsert({
-        where: { productId_mediaId: { productId, mediaId: body.mediaId } },
+        where: { productId_mediaId: { productId, mediaId } },
         update: {},
-        create: { productId, mediaId: body.mediaId, position: count, isPrimary: count === 0, alt: body.alt?.trim() || null },
+        create: { productId, mediaId, position: count, isPrimary: count === 0, alt: body.alt?.trim() || null },
       });
     } else if (body.action === "detach" && body.linkId) {
       await prisma.productMedia.deleteMany({ where: { id: body.linkId, productId } });
       const links = await prisma.productMedia.findMany({ where: { productId }, orderBy: { position: "asc" } });
-      if (links.length && !links.some((link) => link.isPrimary)) await prisma.productMedia.update({ where: { id: links[0].id }, data: { isPrimary: true } });
+      if (links.length && !links.some((link) => link.isPrimary)) {
+        await prisma.productMedia.update({ where: { id: links[0].id }, data: { isPrimary: true } });
+      }
     } else if (body.action === "primary" && body.linkId) {
       await prisma.$transaction([
         prisma.productMedia.updateMany({ where: { productId }, data: { isPrimary: false } }),
@@ -47,16 +51,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     } else if (body.action === "alt" && body.linkId) {
       await prisma.productMedia.updateMany({ where: { id: body.linkId, productId }, data: { alt: body.alt?.trim() || null } });
     } else if (body.action === "reorder" && Array.isArray(body.orderedIds)) {
-      await prisma.$transaction(body.orderedIds.map((linkId, position) => prisma.productMedia.updateMany({ where: { id: linkId, productId }, data: { position } })));
+      await prisma.$transaction(
+        body.orderedIds.map((linkId, position) =>
+          prisma.productMedia.updateMany({ where: { id: linkId, productId }, data: { position } }),
+        ),
+      );
     } else {
       return NextResponse.json({ error: "Action média invalide." }, { status: 400 });
     }
 
     await syncPrimaryImage(productId);
     await revalidateProduct(productId);
+    invalidateCatalogCache();
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
+    }
     console.error("product media", error);
     return NextResponse.json({ error: "Impossible de modifier la galerie." }, { status: 500 });
   }

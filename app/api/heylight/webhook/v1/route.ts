@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import { prisma } from "@/lib/prisma";
 import { verifyHeyLightSignature, type HeyLightStatus } from "@/lib/heylight";
-import { buildInvoiceNumber, getShopSettings } from "@/lib/settings";
+import { buildInvoiceNumber, getShopSettingsFresh } from "@/lib/settings";
 import { adminNewOrderEmail, customerOrderConfirmationEmail, sendTransactionalEmail } from "@/lib/transactional-emails";
 
 export const runtime = "nodejs";
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   if (payment.status === payload.status) return NextResponse.json({ received: true, duplicate: true });
 
   if (payload.status === "success") {
-    const settings = await getShopSettings();
+    const settings = await getShopSettingsFresh();
     const result = await prisma.$transaction(async (tx) => {
       const fresh = await tx.payment.findUnique({ where: { id: payment.id }, include: { order: { include: { customer: true, items: true, invoice: true } } } });
       if (!fresh || fresh.status === "success") return { changed: false, order: fresh?.order };
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     });
 
     if (result.changed && result.order) {
+      invalidateCatalogCache();
       const lines = result.order.items.map((item) => ({ name: item.name, quantity: item.quantity, amountTotal: item.price * item.quantity }));
       await Promise.allSettled([
         sendTransactionalEmail({ to: result.order.customer.email, subject: `Commande ${result.order.orderNumber} confirmée`, html: customerOrderConfirmationEmail({ reference: result.order.orderNumber, lines, total: result.order.total, currency: result.order.currency }) }),

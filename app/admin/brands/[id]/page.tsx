@@ -1,3 +1,4 @@
+import { invalidateBrandCache } from "@/lib/cache-invalidation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -81,6 +82,7 @@ export default async function AdminBrandDetailPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
+    invalidateBrandCache();
     redirect(`/admin/brands/${id}?flash=brandSaved`);
   }
 
@@ -101,6 +103,7 @@ export default async function AdminBrandDetailPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
+    invalidateBrandCache();
     redirect("/admin/brands?flash=brandDeleted");
   }
 

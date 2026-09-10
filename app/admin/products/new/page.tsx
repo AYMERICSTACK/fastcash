@@ -1,3 +1,4 @@
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -216,6 +217,8 @@ export default async function NewProductPage() {
     revalidatePath("/recherche");
     revalidatePath("/sitemap.xml");
     revalidatePath(`/produits/${product.slug}`);
+
+    invalidateCatalogCache();
 
     redirect(`/pilotage/produits/${product.id}?flash=productCreated`);
   }

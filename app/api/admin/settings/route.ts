@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateSettingsCache } from "@/lib/cache-invalidation";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/session";
 
@@ -63,5 +64,6 @@ export async function PATCH(request: Request) {
     create:item,
   })));
 
+  invalidateSettingsCache();
   return NextResponse.json({ ok:true, updated:updates.length });
 }

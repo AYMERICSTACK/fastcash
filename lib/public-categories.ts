@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { getCategory, strategicCategories, type CategoryConfig } from "@/lib/categories";
 import type { Product } from "@/lib/products";
@@ -168,7 +170,7 @@ export function toPublicCategory(
   };
 }
 
-export async function getPublicCategories(): Promise<PublicCategory[]> {
+async function getPublicCategoriesUncached(): Promise<PublicCategory[]> {
   const dbCategories = await prisma.category.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
@@ -218,7 +220,7 @@ export async function getPublicCategories(): Promise<PublicCategory[]> {
   return [...dynamic, ...staticMissing].sort((a, b) => a.title.localeCompare(b.title, "fr"));
 }
 
-export async function getPublicCategoryBySlug(slug: string): Promise<PublicCategory | null> {
+async function getPublicCategoryBySlugUncached(slug: string): Promise<PublicCategory | null> {
   const canonicalSlug = resolvePublicCategorySlug(slug);
   const sources = sourceCategorySlugs(canonicalSlug);
   const category = await prisma.category.findFirst({
@@ -327,7 +329,7 @@ export async function searchPublicProducts(query: string, limit = 48): Promise<P
   return products.map(toCatalogProduct);
 }
 
-export async function getFeaturedPublicProducts(limit = 8): Promise<Product[]> {
+async function getFeaturedPublicProductsUncached(limit = 8): Promise<Product[]> {
   const products = await prisma.product.findMany({
     where: {
       active: true,
@@ -345,7 +347,7 @@ export async function getFeaturedPublicProducts(limit = 8): Promise<Product[]> {
   return products.map(toCatalogProduct);
 }
 
-export async function getProductsByPublicCategory(slug: string): Promise<Product[]> {
+async function getProductsByPublicCategoryUncached(slug: string): Promise<Product[]> {
   const resolvedSlug = resolvePublicCategorySlug(slug);
   const categorySlugs = sourceCategorySlugs(resolvedSlug);
 
@@ -387,7 +389,7 @@ export async function getProductsByPublicCategory(slug: string): Promise<Product
   return products.map(toCatalogProduct);
 }
 
-export async function getPublicProductBySlug(slug: string): Promise<Product | null> {
+async function getPublicProductBySlugUncached(slug: string): Promise<Product | null> {
   const product = await prisma.product.findUnique({
     where: { slug },
     include: {
@@ -400,3 +402,31 @@ export async function getPublicProductBySlug(slug: string): Promise<Product | nu
   if (!product || !product.active) return null;
   return toCatalogProduct(product);
 }
+
+
+// Shared public read cache: checkout/payment paths continue to query Prisma directly.
+export const getPublicCategories = unstable_cache(
+  getPublicCategoriesUncached,
+  ["getPublicCategories-v2"],
+  { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+);
+export const getPublicCategoryBySlug = unstable_cache(
+  getPublicCategoryBySlugUncached,
+  ["getPublicCategoryBySlug-v2"],
+  { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+);
+export const getFeaturedPublicProducts = unstable_cache(
+  getFeaturedPublicProductsUncached,
+  ["getFeaturedPublicProducts-v2"],
+  { revalidate: 300, tags: [CACHE_TAGS.catalog] },
+);
+export const getProductsByPublicCategory = unstable_cache(
+  getProductsByPublicCategoryUncached,
+  ["getProductsByPublicCategory-v2"],
+  { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+);
+export const getPublicProductBySlug = unstable_cache(
+  getPublicProductBySlugUncached,
+  ["getPublicProductBySlug-v2"],
+  { revalidate: 300, tags: [CACHE_TAGS.catalog] },
+);

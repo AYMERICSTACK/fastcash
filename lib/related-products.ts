@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { products as staticProducts, type Product } from "@/lib/products";
 import { toCatalogProduct } from "@/lib/public-categories";
@@ -38,7 +40,7 @@ function getStaticRelatedProducts(currentProduct: Product, limit: number) {
     .slice(0, limit);
 }
 
-export async function getRelatedProducts(currentProduct: Product, limit = 4): Promise<Product[]> {
+async function getRelatedProductsUncached(currentProduct: Product, limit = 4): Promise<Product[]> {
   const currentDbProduct = await prisma.product.findUnique({
     where: { slug: currentProduct.slug },
     select: {
@@ -86,3 +88,5 @@ export async function getRelatedProducts(currentProduct: Product, limit = 4): Pr
 
   return uniqueProducts([...dbRelatedProducts, ...staticFallbackProducts]).slice(0, limit);
 }
+
+export const getRelatedProducts = unstable_cache(getRelatedProductsUncached, ["getRelatedProducts-v2"], { revalidate: 300, tags: [CACHE_TAGS.catalog] });

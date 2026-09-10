@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { products, type Product } from "@/lib/products";
 import { toCatalogProduct } from "@/lib/public-categories";
-import { buildOrderReference, getShopSettings } from "@/lib/settings";
+import { buildOrderReference, getShopSettingsFresh } from "@/lib/settings";
 import { getShippingFeeCHF, normalizeShippingMethod, resolveCoupon } from "@/lib/checkout-rules";
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit";
 import { getHeyLightConfig, heylightFetch } from "@/lib/heylight";
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const settings = await getShopSettings();
+    const settings = await getShopSettingsFresh();
     if (!isHeyLightEnabled() || !settings.heylightEnabled) return NextResponse.json({ error: "HeyLight est actuellement indisponible." }, { status: 400 });
     if (!getHeyLightConfig().merchantKey) return NextResponse.json({ error: "Configuration HeyLight incomplète." }, { status: 503 });
 

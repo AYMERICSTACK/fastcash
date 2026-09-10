@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import type { Product } from "@/lib/products";
 import { toCatalogProduct } from "@/lib/public-categories";
@@ -35,7 +37,7 @@ function defaultBrandConfig(brand: { id: string; name: string; slug: string; _co
   };
 }
 
-export async function getPublicBrands(): Promise<PublicBrand[]> {
+async function getPublicBrandsUncached(): Promise<PublicBrand[]> {
   const brands = await prisma.brand.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { products: true } } },
@@ -44,7 +46,7 @@ export async function getPublicBrands(): Promise<PublicBrand[]> {
   return brands.filter((brand) => brand._count.products > 0).map(defaultBrandConfig);
 }
 
-export async function getPublicBrandBySlug(slug: string): Promise<PublicBrand | null> {
+async function getPublicBrandBySlugUncached(slug: string): Promise<PublicBrand | null> {
   const brand = await prisma.brand.findUnique({
     where: { slug },
     include: { _count: { select: { products: true } } },
@@ -54,7 +56,7 @@ export async function getPublicBrandBySlug(slug: string): Promise<PublicBrand | 
   return defaultBrandConfig(brand);
 }
 
-export async function getProductsByPublicBrand(slug: string): Promise<Product[]> {
+async function getProductsByPublicBrandUncached(slug: string): Promise<Product[]> {
   const products = await prisma.product.findMany({
     where: {
       active: true,
@@ -70,3 +72,7 @@ export async function getProductsByPublicBrand(slug: string): Promise<Product[]>
 
   return products.map(toCatalogProduct);
 }
+
+export const getPublicBrands = unstable_cache(getPublicBrandsUncached, ["getPublicBrands-v2"], { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
+export const getPublicBrandBySlug = unstable_cache(getPublicBrandBySlugUncached, ["getPublicBrandBySlug-v2"], { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
+export const getProductsByPublicBrand = unstable_cache(getProductsByPublicBrandUncached, ["getProductsByPublicBrand-v2"], { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });

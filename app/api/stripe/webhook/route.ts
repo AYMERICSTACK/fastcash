@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
@@ -7,7 +8,7 @@ import { convertFromCHF, normalizeCurrency, type Currency } from "@/lib/currency
 import { products, type Product } from "@/lib/products";
 import { prisma } from "@/lib/prisma";
 import { toCatalogProduct } from "@/lib/public-categories";
-import { buildInvoiceNumber, buildOrderReference, getShopSettings, type ShopSettings } from "@/lib/settings";
+import { buildInvoiceNumber, buildOrderReference, getShopSettingsFresh, type ShopSettings } from "@/lib/settings";
 import { getStripeClient, getStripeConfig } from "@/lib/stripe";
 import {
   adminNewOrderEmail,
@@ -630,7 +631,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, pending: true });
     }
 
-    const settings = await getShopSettings();
+    const settings = await getShopSettingsFresh();
     const currency = normalizeCurrency(session.metadata?.currency || session.currency || settings.defaultCurrency) as Currency;
     const reference = session.metadata?.order_reference || buildOrderReference(settings);
     const amountTotal = (session.amount_total || 0) / 100;
@@ -673,6 +674,7 @@ export async function POST(req: Request) {
     }
 
     revalidateOrderBackOffice(persistence.order.id);
+    invalidateCatalogCache();
 
     const offerTokens = String(session.metadata?.offer_tokens || "").split(",").filter(Boolean);
     if (offerTokens.length) {

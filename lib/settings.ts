@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { normalizeCurrency, type Currency } from "@/lib/currency";
 
@@ -140,7 +142,7 @@ function value(map: Map<string, string>, key: string, fallback: string) {
   return map.get(key)?.trim() || fallback;
 }
 
-export async function getShopSettings(): Promise<ShopSettings> {
+export async function getShopSettingsFresh(): Promise<ShopSettings> {
   try {
     const rows = await prisma.setting.findMany();
     const s = new Map(rows.map((row) => [row.key, row.value]));
@@ -205,6 +207,12 @@ export async function getShopSettings(): Promise<ShopSettings> {
     return DEFAULT_SETTINGS;
   }
 }
+
+export const getShopSettings = unstable_cache(
+  getShopSettingsFresh,
+  ["getShopSettings-v2"],
+  { revalidate: 900, tags: [CACHE_TAGS.settings] },
+);
 
 export function buildOrderReference(settings: Pick<ShopSettings, "orderPrefix">) {
   return `${prefixWithDash(settings.orderPrefix)}${Date.now()}`;

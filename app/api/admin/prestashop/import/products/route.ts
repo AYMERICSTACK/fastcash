@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import { assertValidSqlFile } from "@/lib/prestashop";
 import { importPrestashopProducts } from "@/lib/prestashop/importer/products";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
         Number.isFinite(languageIdValue) && languageIdValue > 0 ? languageIdValue : null,
     });
 
+    invalidateCatalogCache();
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

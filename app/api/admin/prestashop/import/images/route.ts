@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 import { assertValidSqlFile } from "@/lib/prestashop";
 import { importPrestashopImages } from "@/lib/prestashop/importer/images";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
         .map((value) => Number(value.trim()))
         .filter((value) => Number.isInteger(value) && value > 0),
     });
+    invalidateCatalogCache();
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
