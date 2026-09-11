@@ -10,6 +10,8 @@ import ProductImageField from "../ProductImageField";
 import ProductMediaManager from "../ProductMediaManager";
 import styles from "../../admin.module.css";
 import { prisma } from "@/lib/prisma";
+import { sortCategoriesByPath } from "@/lib/category-tree";
+import GuidedCategoryField from "../GuidedCategoryField";
 import { getShopSettings } from "@/lib/settings";
 import { saveProductImageFromForm } from "@/lib/admin-product-images";
 import { requireAdminSession } from "@/lib/session";
@@ -182,6 +184,8 @@ export default async function ProductDetailPage({
   const productUrl = productSlug ? `/produits/${productSlug}` : `/pilotage/produits/${productId}`;
   const inventoryValue = product.price * Math.max(product.stock, 0);
   const hasOrderHistory = product._count.orderItems > 0;
+
+  const sortedCategories = sortCategoriesByPath(categories);
 
   async function updateProduct(formData: FormData) {
     "use server";
@@ -411,25 +415,12 @@ export default async function ProductDetailPage({
               <span>Description</span>
               <textarea name="description" defaultValue={product.description || ""} rows={5} />
             </label>
-            <label>
-              <span>Catégorie</span>
-              <select name="categoryId" defaultValue={product.categoryId || ""}>
-                <option value="">Sans catégorie</option>
-                {categories.map((category) => {
-                  const context = category.parent?.name || category.slug;
-                  return (
-                    <option key={category.id} value={category.id}>
-                      {category.name} — {context}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-            <div className={styles.inlineCreateBox}>
-              <strong>Nouvelle catégorie rapide</strong>
-              <p>À remplir uniquement si vous voulez créer une nouvelle catégorie et l’assigner à ce produit.</p>
+            <GuidedCategoryField categories={sortedCategories} defaultCategoryId={product.categoryId} />
+            <details className={styles.inlineCreateBox}>
+              <summary>Catégorie absente ? Création exceptionnelle</summary>
+              <p>Utilisez ceci uniquement si aucun univers ou sous-catégorie existante ne convient.</p>
               <input name="newCategoryName" placeholder="Ex : Trottinettes électriques" />
-            </div>
+            </details>
             <label>
               <span>Marque</span>
               <select name="brandId" defaultValue={product.brandId || ""}>

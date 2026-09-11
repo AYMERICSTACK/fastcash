@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { formatAdminPrice } from "@/lib/admin-data";
 import { getShopSettings } from "@/lib/settings";
 import { getStockLabel } from "@/lib/admin-ui";
+import { getDescendantCategoryIds } from "@/lib/category-tree";
+import ProductCategoryFilter from "./ProductCategoryFilter";
+import ProductToolbarSelect from "./ProductToolbarSelect";
 
 export default async function AdminProductsPage({
   searchParams,
@@ -27,6 +30,16 @@ export default async function AdminProductsPage({
   const page = Math.max(1, Number.parseInt(value("page") || "1", 10) || 1);
   const pageSize = 50;
 
+  const categories = await prisma.category.findMany({
+    where: { active: true },
+    orderBy: [{ position: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, slug: true, parentId: true },
+  });
+  const selectedCategory = category ? categories.find((item) => item.slug === category) : undefined;
+  const selectedCategoryIds = selectedCategory
+    ? [selectedCategory.id, ...getDescendantCategoryIds(selectedCategory.id, categories)]
+    : [];
+
   const where = {
     ...(q
       ? {
@@ -39,7 +52,7 @@ export default async function AdminProductsPage({
           ],
         }
       : {}),
-    ...(category ? { category: { slug: category } } : {}),
+    ...(selectedCategoryIds.length ? { categoryId: { in: selectedCategoryIds } } : {}),
     ...(brand ? { brand: { slug: brand } } : {}),
     ...(status === "active" ? { active: true } : {}),
     ...(status === "out" ? { stock: { lte: 0 } } : {}),
@@ -56,7 +69,7 @@ export default async function AdminProductsPage({
     sort === "stock-desc" ? { stock: "desc" as const } :
     { updatedAt: "desc" as const };
 
-  const [productCount, filteredCount, products, categories, brands, lowStockTotal, outOfStockTotal] = await Promise.all([
+  const [productCount, filteredCount, products, brands, lowStockTotal, outOfStockTotal] = await Promise.all([
     prisma.product.count(),
     prisma.product.count({ where }),
     prisma.product.findMany({
@@ -66,7 +79,6 @@ export default async function AdminProductsPage({
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.category.findMany({ where: { active: true, products: { some: {} } }, orderBy: { name: "asc" }, select: { name: true, slug: true } }),
     prisma.brand.findMany({ where: { active: true, products: { some: {} } }, orderBy: { name: "asc" }, select: { name: true, slug: true } }),
     prisma.product.count({ where: { stock: { gt: 0, lte: settings.lowStockThreshold } } }),
     prisma.product.count({ where: { stock: { lte: 0 } } }),
@@ -109,10 +121,43 @@ export default async function AdminProductsPage({
           <span>Recherche</span>
           <input name="q" defaultValue={q} placeholder="Nom, référence, marque, catégorie…" />
         </label>
-        <label><span>Catégorie</span><select name="category" defaultValue={category}><option value="">Toutes</option>{categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label>
-        <label><span>Marque</span><select name="brand" defaultValue={brand}><option value="">Toutes</option>{brands.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label>
-        <label><span>Stock / statut</span><select name="status" defaultValue={status}><option value="">Tous</option><option value="active">Actifs</option><option value="low">Stock faible</option><option value="out">Rupture</option></select></label>
-        <label><span>Trier par</span><select name="sort" defaultValue={sort}><option value="updated-desc">Plus récents</option><option value="name-asc">Nom A–Z</option><option value="price-asc">Prix croissant</option><option value="price-desc">Prix décroissant</option><option value="stock-asc">Stock croissant</option><option value="stock-desc">Stock décroissant</option></select></label>
+        <ProductCategoryFilter categories={categories} defaultSlug={category} />
+        <ProductToolbarSelect
+          name="brand"
+          label="Marque"
+          eyebrow="Marque"
+          defaultValue={brand}
+          allLabel="Toutes les marques"
+          searchable
+          options={brands.map((item) => ({ value: item.slug, label: item.name }))}
+        />
+        <ProductToolbarSelect
+          name="status"
+          label="Stock / statut"
+          eyebrow="Disponibilité"
+          defaultValue={status}
+          allLabel="Tous les statuts"
+          options={[
+            { value: "active", label: "Actifs", hint: "Produits publiés" },
+            { value: "low", label: "Stock faible", hint: "À surveiller" },
+            { value: "out", label: "Rupture", hint: "Stock à zéro" },
+          ]}
+        />
+        <ProductToolbarSelect
+          name="sort"
+          label="Trier par"
+          eyebrow="Ordre"
+          defaultValue={sort}
+          allLabel="Plus récents"
+          options={[
+            { value: "updated-desc", label: "Plus récents", hint: "Modifiés récemment" },
+            { value: "name-asc", label: "Nom A–Z" },
+            { value: "price-asc", label: "Prix croissant" },
+            { value: "price-desc", label: "Prix décroissant" },
+            { value: "stock-asc", label: "Stock croissant" },
+            { value: "stock-desc", label: "Stock décroissant" },
+          ]}
+        />
         <button className={styles.button} type="submit">Rechercher</button>
         <Link className={styles.buttonSecondary} href="/admin/products">Réinitialiser</Link>
       </form>

@@ -7,6 +7,7 @@ import styles from "../admin.module.css";
 import { prisma } from "@/lib/prisma";
 import AdminFlash from "../AdminFlash";
 import { requireAdminSession } from "@/lib/session";
+import { categoryPathLabel, sortCategoriesByPath } from "@/lib/category-tree";
 
 const RESERVED_CATEGORY_SLUGS = new Set(["accueil"]);
 
@@ -40,13 +41,15 @@ export default async function AdminCategoriesPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const flashParams = await searchParams;
-  const categories = await prisma.category.findMany({
+  const categoriesRaw = await prisma.category.findMany({
     orderBy: [{ name: "asc" }, { position: "asc" }, { slug: "asc" }],
     include: {
       parent: { select: { name: true, slug: true } },
       _count: { select: { products: true, productLinks: true, children: true } },
     },
   });
+  const categories = sortCategoriesByPath(categoriesRaw);
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
 
   const totalProducts = categories.reduce((sum, category) => sum + category._count.products, 0);
   const emptyCategories = categories.filter((category) => category._count.products === 0 && category._count.productLinks === 0).length;
@@ -57,6 +60,7 @@ export default async function AdminCategoriesPage({
 
     const name = String(formData.get("name") || "").trim();
     const slugInput = String(formData.get("slug") || "").trim();
+    const parentId = String(formData.get("parentId") || "").trim() || null;
 
     if (!name) {
       throw new Error("Le nom de la catégorie est obligatoire.");
@@ -71,8 +75,13 @@ export default async function AdminCategoriesPage({
 
     const slug = await getUniqueCategorySlug(slugInput || name);
 
+    if (parentId) {
+      const parent = await prisma.category.findUnique({ where: { id: parentId }, select: { id: true } });
+      if (!parent) throw new Error("La catégorie parente sélectionnée est introuvable.");
+    }
+
     await prisma.category.create({
-      data: { name, slug },
+      data: { name, slug, parentId },
     });
 
     revalidatePath("/admin/categories");
@@ -130,6 +139,17 @@ export default async function AdminCategoriesPage({
               <input name="name" placeholder="Ex : Trottinettes électriques" required />
             </label>
             <label>
+              <span>Catégorie parente</span>
+              <select name="parentId" defaultValue="">
+                <option value="">— Catégorie principale —</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {categoryPathLabel(category, categoryById)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               <span>Slug SEO optionnel</span>
               <input name="slug" placeholder="Laissez vide pour générer automatiquement" />
             </label>
@@ -178,7 +198,7 @@ export default async function AdminCategoriesPage({
             <tbody>
               {categories.map((category) => (
                 <tr key={category.id}>
-                  <td><strong>{category.name}</strong></td>
+                  <td><strong>{categoryPathLabel(category, categoryById)}</strong></td>
                   <td>{category.slug}</td>
                   <td>{category.parent ? `${category.parent.name} (${category.parent.slug})` : "Racine"}</td>
                   <td>{category._count.products}</td>

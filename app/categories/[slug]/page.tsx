@@ -3,11 +3,14 @@ import { notFound, permanentRedirect } from "next/navigation";
 import CategoryHero from "@/components/CategoryHero";
 import FastCashBlock from "@/components/FastCashBlock";
 import CategoryCatalog from "@/components/CategoryCatalog";
+import Image from "next/image";
+import Link from "next/link";
 import { buildBreadcrumbJsonLd } from "@/components/PremiumBreadcrumb";
 import {
   getProductsByPublicCategory,
   getPublicCategories,
   getPublicCategoryBySlug,
+  getPublicSubcategories,
   resolvePublicCategorySlug,
 } from "@/lib/public-categories";
 
@@ -168,7 +171,10 @@ export default async function CategoryPage({ params }: PageProps) {
   // The database is the source of truth after the Prestashop migration.
   // Do not fall back to keyword matching: it caused false positives such as
   // "Dior" matching the old jewelry keyword "or ".
-  const list = await getProductsByPublicCategory(resolvedSlug);
+  const [list, subcategories] = await Promise.all([
+    getProductsByPublicCategory(resolvedSlug),
+    getPublicSubcategories(resolvedSlug),
+  ]);
   const categoryUrl = `${siteUrl}/categories/${resolvedSlug}`;
   const breadcrumbItems = [
     { label: "Accueil", href: "/" },
@@ -218,6 +224,31 @@ export default async function CategoryPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
       />
       <CategoryHero category={category} breadcrumbItems={breadcrumbItems} />
+
+      {subcategories.length > 0 ? (
+        <section className="fc-subcategory-section" aria-labelledby="fc-subcategory-title">
+          <div className="container">
+            <div className="fc-subcategory-heading">
+              <p className="hero-kicker">Explorer</p>
+              <h2 id="fc-subcategory-title">Sous-catégories {category.title}</h2>
+            </div>
+            <div className="fc-subcategory-grid">
+              {subcategories.map((subcategory) => (
+                <Link key={subcategory.slug} href={`/categories/${subcategory.slug}`} className="fc-subcategory-card">
+                  <div className="fc-subcategory-image">
+                    <Image src={subcategory.image} alt={subcategory.title} width={520} height={340} />
+                  </div>
+                  <div className="fc-subcategory-copy">
+                    <span>{subcategory.productCount > 0 ? `${subcategory.productCount} produit${subcategory.productCount > 1 ? "s" : ""}` : "Voir la sélection"}</span>
+                    <strong>{subcategory.title}</strong>
+                    <small>Découvrir →</small>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="fc-catalog-section" id="produits">
         <div className="container">

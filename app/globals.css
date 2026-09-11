@@ -8562,3 +8562,388 @@ textarea {
     line-height: 1.68;
   }
 }
+
+/* Category hierarchy V1 */
+.fc-subcategory-section {
+  padding: 42px 0 10px;
+}
+
+.fc-subcategory-heading {
+  margin-bottom: 18px;
+}
+
+.fc-subcategory-heading h2 {
+  margin: 4px 0 0;
+  font-size: clamp(1.5rem, 2.5vw, 2.15rem);
+  line-height: 1.1;
+}
+
+.fc-subcategory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.fc-subcategory-card {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  min-height: 128px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 15, 15, 0.1);
+  border-radius: 18px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.fc-subcategory-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(15, 15, 15, 0.18);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+}
+
+.fc-subcategory-image {
+  position: relative;
+  min-height: 128px;
+  background: #f4f4f4;
+}
+
+.fc-subcategory-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fc-subcategory-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+}
+
+.fc-subcategory-copy span,
+.fc-subcategory-copy small {
+  color: #6c6c6c;
+  font-size: 0.82rem;
+}
+
+.fc-subcategory-copy strong {
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+@media (max-width: 900px) {
+  .fc-subcategory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .fc-subcategory-section {
+    padding-top: 28px;
+  }
+
+  .fc-subcategory-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .fc-subcategory-card {
+    grid-template-columns: 104px minmax(0, 1fr);
+    min-height: 104px;
+    border-radius: 14px;
+  }
+
+  .fc-subcategory-image {
+    min-height: 104px;
+  }
+
+  .fc-subcategory-copy {
+    padding: 14px;
+  }
+}
+
+/* V18.2 - navigation catalogue hiérarchique */
+.luxe-category-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 28px;
+  align-content: start;
+}
+
+.luxe-category-group {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.luxe-category-group-title {
+  display: block;
+  padding: 0 0 8px !important;
+  margin-bottom: 3px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22) !important;
+  color: #f4d77d !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.luxe-category-group > a:not(.luxe-category-group-title) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  color: rgba(255, 255, 255, 0.84);
+  text-decoration: none;
+}
+
+.luxe-category-group > a:not(.luxe-category-group-title):hover {
+  color: #fff;
+}
+
+.luxe-category-group b {
+  color: rgba(244, 215, 125, 0.72);
+  font-size: 11px;
+}
+
+.luxe-mobile-category-group {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.luxe-mobile-category-root {
+  color: #f4d77d !important;
+  font-weight: 900 !important;
+}
+
+.luxe-mobile-category-children {
+  display: grid;
+  gap: 2px;
+  padding-left: 14px;
+}
+
+.luxe-mobile-category-children a {
+  font-size: 14px !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+@media (max-width: 1180px) and (min-width: 901px) {
+  .luxe-nav > a,
+  .luxe-nav-item > a {
+    font-size: 11px;
+  }
+}
+
+
+/* =====================================================
+   FAST CASH V18.3 — Finition header / mega-menu
+   - Plus d'air dans le mega-menu "Toutes les catégories"
+   - Libellé "Accessoires" compact par univers (affichage uniquement)
+===================================================== */
+@media (min-width: 901px) {
+  .luxe-mega-menu-categories {
+    padding: 30px 34px !important;
+    column-gap: 34px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-copy {
+    padding-left: 8px !important;
+    padding-right: 28px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group-grid {
+    padding: 2px 8px !important;
+    gap: 22px 34px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-image {
+    margin-right: 2px !important;
+  }
+}
+
+/* =====================================================
+   FAST CASH V18.4 — Mega-menu contenu dans le viewport
+   - Scroll interne sur desktop quand le contenu dépasse
+   - Empêche le scroll de se propager à la page derrière
+   - Garde une marge respirante en bas de l'écran
+===================================================== */
+@media (min-width: 901px) {
+  .luxe-mega-menu {
+    max-height: calc(100dvh - 124px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    scrollbar-gutter: stable !important;
+    padding-bottom: 34px !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.5) rgba(255, 255, 255, 0.05);
+  }
+
+  .luxe-mega-menu::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .luxe-mega-menu::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .luxe-mega-menu::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(212, 175, 55, 0.46);
+  }
+
+  .luxe-mega-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.7);
+  }
+
+  .luxe-mega-menu-categories {
+    padding-bottom: 38px !important;
+  }
+}
+
+/* =====================================================
+   FAST CASH V18.5 — Refonte UX "Toutes les catégories"
+   - Vue d'ensemble compacte, sans scroll interne
+   - Tous les rayons restent accessibles sous forme de chips
+   - La zone image reste secondaire pour laisser respirer le catalogue
+===================================================== */
+@media (min-width: 901px) {
+  .luxe-mega-menu-categories {
+    grid-template-columns: minmax(190px, 0.62fr) minmax(420px, 1.58fr) minmax(230px, 0.72fr) !important;
+    align-items: stretch !important;
+    gap: 24px !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    overscroll-behavior: auto !important;
+    scrollbar-gutter: auto !important;
+    padding: 24px 28px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-copy {
+    align-self: center !important;
+    padding: 4px 20px 4px 4px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-copy strong {
+    font-size: clamp(27px, 2.05vw, 38px) !important;
+    line-height: 0.98 !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-copy p {
+    max-width: 250px !important;
+    margin-top: 12px !important;
+    font-size: 13px !important;
+    line-height: 1.55 !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-actions {
+    margin-top: 18px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px 16px !important;
+    align-content: center !important;
+    padding: 0 !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-content: flex-start !important;
+    gap: 7px !important;
+    min-width: 0 !important;
+    padding: 12px 13px !important;
+    border: 1px solid rgba(212, 175, 55, 0.15) !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.018) !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group-title {
+    flex: 0 0 100% !important;
+    margin: 0 0 3px !important;
+    padding: 0 0 8px !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group > a:not(.luxe-category-group-title) {
+    display: inline-flex !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 6px 9px !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.035) !important;
+    color: rgba(255, 255, 255, 0.84) !important;
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group > a:not(.luxe-category-group-title):hover {
+    border-color: rgba(212, 175, 55, 0.42) !important;
+    background: rgba(212, 175, 55, 0.08) !important;
+    color: #fff !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group b {
+    font-size: 9px !important;
+    opacity: 0.72 !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-image {
+    min-height: 390px !important;
+    max-height: 430px !important;
+    margin: 0 !important;
+    align-self: center !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-image img {
+    height: 100% !important;
+    min-height: 390px !important;
+    object-fit: cover !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-image-caption strong {
+    font-size: clamp(24px, 2vw, 34px) !important;
+    line-height: 0.98 !important;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 760px) {
+  .luxe-mega-menu-categories {
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group-grid {
+    gap: 10px 14px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group {
+    padding: 9px 11px !important;
+    gap: 5px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-category-group > a:not(.luxe-category-group-title) {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .luxe-mega-menu-categories .luxe-mega-image,
+  .luxe-mega-menu-categories .luxe-mega-image img {
+    min-height: 330px !important;
+    max-height: 360px !important;
+  }
+}

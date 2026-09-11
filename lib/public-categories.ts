@@ -6,7 +6,7 @@ import type { Product } from "@/lib/products";
 
 const DEFAULT_CATEGORY_IMAGE = "/images/hero/fastcash-luxury-hero.jpg";
 
-const RESERVED_CATEGORY_SLUGS = new Set(["accueil", "promotions", "bonnes-affaires", "apple", "samsung"]);
+const RESERVED_CATEGORY_SLUGS = new Set(["accueil", "promotions", "bonnes-affaires", "samsung"]);
 
 
 const CURATED_CATEGORY_IMAGES: Record<string, string> = {
@@ -105,6 +105,8 @@ function defaultCategoryConfig(name: string, slug: string): CategoryConfig {
 export type PublicCategory = CategoryConfig & {
   id?: string;
   productCount: number;
+  parentId?: string | null;
+  parentSlug?: string | null;
 };
 
 type PublicCategorySource = {
@@ -115,7 +117,7 @@ type PublicCategorySource = {
   active?: boolean;
   image?: string | null;
   parentId?: string | null;
-  parent?: { name: string } | null;
+  parent?: { name: string; slug?: string } | null;
   _count?: { products?: number };
 };
 
@@ -167,6 +169,8 @@ export function toPublicCategory(
     title: staticConfig?.title ?? displayName,
     image,
     productCount: category._count?.products ?? 0,
+    parentId: category.parentId ?? null,
+    parentSlug: category.parent?.slug ?? null,
   };
 }
 
@@ -175,7 +179,7 @@ async function getPublicCategoriesUncached(): Promise<PublicCategory[]> {
     where: { active: true },
     orderBy: { name: "asc" },
     include: {
-      parent: { select: { name: true } },
+      parent: { select: { name: true, slug: true } },
       _count: { select: { products: true } },
     },
   });
@@ -226,7 +230,7 @@ async function getPublicCategoryBySlugUncached(slug: string): Promise<PublicCate
   const category = await prisma.category.findFirst({
     where: { slug: { in: sources }, active: true },
     include: {
-      parent: { select: { name: true } },
+      parent: { select: { name: true, slug: true } },
       _count: { select: { products: true } },
     },
     orderBy: { id: "asc" },
@@ -389,6 +393,31 @@ async function getProductsByPublicCategoryUncached(slug: string): Promise<Produc
   return products.map(toCatalogProduct);
 }
 
+
+async function getPublicSubcategoriesUncached(parentSlug: string): Promise<PublicCategory[]> {
+  const canonicalSlug = resolvePublicCategorySlug(parentSlug);
+  const sourceSlugs = sourceCategorySlugs(canonicalSlug);
+  const parents = await prisma.category.findMany({
+    where: { slug: { in: sourceSlugs }, active: true },
+    select: { id: true },
+  });
+
+  if (!parents.length) return [];
+
+  const children = await prisma.category.findMany({
+    where: { parentId: { in: parents.map((parent) => parent.id) }, active: true },
+    orderBy: [{ position: "asc" }, { name: "asc" }],
+    include: {
+      parent: { select: { name: true, slug: true } },
+      _count: { select: { products: true } },
+    },
+  });
+
+  return children
+    .filter((category) => isPublicCategorySlug(category.slug))
+    .map((category) => toPublicCategory(category));
+}
+
 async function getPublicProductBySlugUncached(slug: string): Promise<Product | null> {
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -423,6 +452,11 @@ export const getFeaturedPublicProducts = unstable_cache(
 export const getProductsByPublicCategory = unstable_cache(
   getProductsByPublicCategoryUncached,
   ["getProductsByPublicCategory-v2"],
+  { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+);
+export const getPublicSubcategories = unstable_cache(
+  getPublicSubcategoriesUncached,
+  ["getPublicSubcategories-v1"],
   { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicProductBySlug = unstable_cache(

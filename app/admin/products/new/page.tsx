@@ -6,6 +6,8 @@ import AdminShell from "../../AdminShell";
 import NewProductGalleryField from "../NewProductGalleryField";
 import styles from "../../admin.module.css";
 import { prisma } from "@/lib/prisma";
+import { sortCategoriesByPath } from "@/lib/category-tree";
+import GuidedCategoryField from "../GuidedCategoryField";
 import { getShopSettings } from "@/lib/settings";
 import { requireAdminSession } from "@/lib/session";
 
@@ -118,9 +120,11 @@ async function getOrCreateCategoryId(categoryId: string, categoryName: string) {
 export default async function NewProductPage() {
   const [settings, categories, brands] = await Promise.all([
     getShopSettings(),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true }, orderBy: { name: "asc" } }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  const sortedCategories = sortCategoriesByPath(categories);
 
   async function createProduct(formData: FormData) {
     "use server";
@@ -272,23 +276,13 @@ export default async function NewProductPage() {
               />
             </label>
 
-            <label>
-              <span>Catégorie</span>
-              <select name="categoryId" defaultValue="">
-                <option value="">Sans catégorie</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <GuidedCategoryField categories={sortedCategories} />
 
-            <div className={styles.inlineCreateBox}>
-              <strong>Nouvelle catégorie rapide</strong>
-              <p>À remplir uniquement si la catégorie n’existe pas encore.</p>
+            <details className={styles.inlineCreateBox}>
+              <summary>Catégorie absente ? Création exceptionnelle</summary>
+              <p>Utilisez ceci uniquement si aucun univers ou sous-catégorie existante ne convient.</p>
               <input name="newCategoryName" placeholder="Ex : Trottinettes électriques" />
-            </div>
+            </details>
 
             <label>
               <span>Marque</span>

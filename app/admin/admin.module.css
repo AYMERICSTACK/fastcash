@@ -3436,3 +3436,367 @@
   background: #d4af37;
   color: #111;
 }
+
+/* V18.2 - classement produit guidé */
+.guidedCategoryBox {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.07), rgba(255, 255, 255, 0.025));
+}
+
+.guidedCategoryIntro {
+  display: grid;
+  gap: 4px;
+}
+
+.guidedCategoryIntro strong {
+  color: #f4d77d;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.guidedCategoryIntro span {
+  color: rgba(247, 241, 228, 0.58);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.guidedCategoryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.guidedCategoryHint,
+.guidedCategorySuccess {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.guidedCategoryHint {
+  color: rgba(247, 241, 228, 0.56);
+}
+
+.guidedCategorySuccess {
+  color: #f4d77d;
+  font-weight: 800;
+}
+
+.inlineCreateBox summary {
+  cursor: pointer;
+  color: #f4d77d;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.inlineCreateBox[open] summary {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 720px) {
+  .guidedCategoryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* V18.6 — filtre catalogue guidé par univers */
+.catalogCategoryFilter {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.catalogCategoryLabel {
+  color: rgba(247,241,228,.58);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.catalogCategoryTrigger {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 11px 7px 13px;
+  border: 1px solid rgba(247,241,228,.14);
+  border-radius: 12px;
+  color: #f7f1e4;
+  background: linear-gradient(135deg, #171714, #121210);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.catalogCategoryTrigger:hover,
+.catalogCategoryTriggerOpen {
+  border-color: rgba(212,175,55,.62);
+  background: linear-gradient(135deg, rgba(212,175,55,.08), #151513 50%);
+  box-shadow: 0 0 0 3px rgba(212,175,55,.06);
+}
+.catalogCategoryTrigger > span { display: grid; min-width: 0; gap: 1px; }
+.catalogCategoryTrigger small {
+  color: #d4af37;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.catalogCategoryTrigger strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.catalogCategoryTrigger b { color: #d4af37; font-size: 17px; line-height: 1; }
+.catalogCategoryPopover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(660px, calc(100vw - 48px));
+  padding: 15px;
+  border: 1px solid rgba(212,175,55,.34);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #171713 0%, #0f0f0d 100%);
+  box-shadow: 0 22px 60px rgba(0,0,0,.55);
+}
+.catalogCategoryPopoverHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 11px;
+}
+.catalogCategoryPopoverHead > div { display: grid; gap: 2px; }
+.catalogCategoryPopoverHead strong { font-size: 15px; }
+.catalogCategoryPopoverHead span { color: rgba(247,241,228,.55); font-size: 11px; }
+.catalogCategoryPopoverHead > button {
+  border: 0;
+  background: transparent;
+  color: rgba(247,241,228,.7);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.catalogCategoryAll,
+.catalogCategoryUniverseTitle,
+.catalogCategoryChildren button {
+  border: 1px solid rgba(247,241,228,.1);
+  color: #f7f1e4;
+  background: rgba(255,255,255,.035);
+  cursor: pointer;
+}
+.catalogCategoryAll {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 11px;
+  text-align: left;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+.catalogCategoryUniverses {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+.catalogCategoryUniverse {
+  padding: 10px;
+  border: 1px solid rgba(212,175,55,.14);
+  border-radius: 13px;
+  background: rgba(255,255,255,.018);
+}
+.catalogCategoryUniverseTitle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  text-align: left;
+  color: #e9c64e;
+  font-weight: 950;
+}
+.catalogCategoryUniverseTitle small {
+  color: rgba(247,241,228,.45);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.catalogCategoryChildren {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.catalogCategoryChildren button {
+  padding: 7px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.catalogCategoryAll:hover,
+.catalogCategoryUniverseTitle:hover,
+.catalogCategoryChildren button:hover,
+.catalogCategorySelected {
+  border-color: rgba(212,175,55,.62) !important;
+  background: rgba(212,175,55,.12) !important;
+  color: #f5d45b !important;
+}
+@media (max-width: 760px) {
+  .catalogCategoryPopover { position: fixed; left: 12px; right: 12px; top: 90px; width: auto; max-height: calc(100vh - 110px); overflow-y: auto; }
+  .catalogCategoryUniverses { grid-template-columns: 1fr; }
+}
+
+/* V18.7 — filtres catalogue premium (marque / stock / tri) */
+.catalogSmartFilter {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.catalogSmartTrigger {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 11px 7px 13px;
+  border: 1px solid rgba(247,241,228,.14);
+  border-radius: 12px;
+  color: #f7f1e4;
+  background: linear-gradient(135deg, #171714, #121210);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.catalogSmartTrigger:hover,
+.catalogSmartTriggerOpen {
+  border-color: rgba(212,175,55,.62);
+  background: linear-gradient(135deg, rgba(212,175,55,.08), #151513 50%);
+  box-shadow: 0 0 0 3px rgba(212,175,55,.06);
+}
+.catalogSmartTrigger > span { display: grid; min-width: 0; gap: 1px; }
+.catalogSmartTrigger small {
+  color: #d4af37;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.catalogSmartTrigger strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.catalogSmartTrigger b { color: #d4af37; font-size: 17px; line-height: 1; }
+.catalogSmartPopover {
+  position: absolute;
+  z-index: 82;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(300px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid rgba(212,175,55,.34);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #171713 0%, #0f0f0d 100%);
+  box-shadow: 0 22px 60px rgba(0,0,0,.55);
+}
+.catalogSmartPopoverWide { width: min(390px, calc(100vw - 32px)); }
+.catalogSmartHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.catalogSmartHead > div { display: grid; gap: 2px; }
+.catalogSmartHead strong { font-size: 14px; }
+.catalogSmartHead span { color: rgba(247,241,228,.5); font-size: 10px; }
+.catalogSmartHead > button {
+  border: 0;
+  background: transparent;
+  color: rgba(247,241,228,.7);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.catalogSmartSearchWrap { margin-bottom: 9px; }
+.catalogSmartSearch {
+  width: 100%;
+  min-height: 39px;
+  padding: 0 11px;
+  border: 1px solid rgba(247,241,228,.12);
+  border-radius: 10px;
+  color: #f7f1e4;
+  background: rgba(255,255,255,.035);
+  outline: none;
+}
+.catalogSmartSearch:focus {
+  border-color: rgba(212,175,55,.58);
+  box-shadow: 0 0 0 3px rgba(212,175,55,.07);
+}
+.catalogSmartOptions {
+  display: grid;
+  gap: 6px;
+}
+.catalogSmartOptionsScrollable {
+  max-height: 330px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,.5) rgba(255,255,255,.035);
+}
+.catalogSmartOptions > button {
+  min-height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(247,241,228,.09);
+  border-radius: 10px;
+  color: #f7f1e4;
+  background: rgba(255,255,255,.025);
+  text-align: left;
+  cursor: pointer;
+}
+.catalogSmartOptions > button:hover,
+.catalogSmartSelected {
+  border-color: rgba(212,175,55,.58) !important;
+  background: rgba(212,175,55,.11) !important;
+  color: #f5d45b !important;
+}
+.catalogSmartOptions > button span { font-size: 12px; font-weight: 850; }
+.catalogSmartOptions > button small { color: rgba(247,241,228,.46); font-size: 9px; white-space: nowrap; }
+.catalogSmartEmpty {
+  margin: 4px 0 0;
+  padding: 12px;
+  border: 1px dashed rgba(247,241,228,.1);
+  border-radius: 10px;
+  color: rgba(247,241,228,.5);
+  font-size: 11px;
+  text-align: center;
+}
+@media (max-width: 760px) {
+  .catalogSmartPopover,
+  .catalogSmartPopoverWide {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 90px;
+    width: auto;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+  }
+  .catalogSmartOptionsScrollable { max-height: min(50vh, 360px); }
+}
