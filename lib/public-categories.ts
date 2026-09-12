@@ -351,6 +351,37 @@ async function getFeaturedPublicProductsUncached(limit = 8): Promise<Product[]> 
   return products.map(toCatalogProduct);
 }
 
+async function getDealsProductsUncached(): Promise<Product[]> {
+  const dealsCategory = await prisma.category.findUnique({
+    where: { slug: "bonnes-affaires" },
+    select: { id: true },
+  });
+
+  if (!dealsCategory) return [];
+
+  // La page /promotions est l'URL publique canonique, tandis que
+  // "Bonnes Affaires" reste la catégorie métier unique en base.
+  // On inclut la catégorie principale ET les relations secondaires afin de
+  // conserver toute la sélection historique de bonnes affaires.
+  const products = await prisma.product.findMany({
+    where: {
+      active: true,
+      OR: [
+        { categoryId: dealsCategory.id },
+        { categoryLinks: { some: { categoryId: dealsCategory.id } } },
+      ],
+    },
+    include: {
+      category: { select: { name: true, slug: true } },
+      brand: { select: { name: true, slug: true } },
+      media: { orderBy: { position: "asc" }, include: { media: { select: { url: true } } } },
+    },
+    orderBy: [{ stock: "desc" }, { updatedAt: "desc" }],
+  });
+
+  return products.map(toCatalogProduct);
+}
+
 async function getProductsByPublicCategoryUncached(slug: string): Promise<Product[]> {
   const resolvedSlug = resolvePublicCategorySlug(slug);
   const categorySlugs = sourceCategorySlugs(resolvedSlug);
@@ -448,6 +479,11 @@ export const getFeaturedPublicProducts = unstable_cache(
   getFeaturedPublicProductsUncached,
   ["getFeaturedPublicProducts-v2"],
   { revalidate: 300, tags: [CACHE_TAGS.catalog] },
+);
+export const getDealsProducts = unstable_cache(
+  getDealsProductsUncached,
+  ["getDealsProducts-v1"],
+  { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getProductsByPublicCategory = unstable_cache(
   getProductsByPublicCategoryUncached,
