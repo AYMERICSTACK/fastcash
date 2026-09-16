@@ -32,7 +32,9 @@ export default async function Page({
   if (!order) notFound();
 
   const customerName = getCustomerName(order.customer);
-  const deliveryAddress = order.customer.addresses[0];
+  const deliveryAddress =
+    order.customer.addresses.find((address) => address.label === `Commande ${order.orderNumber}`) ||
+    order.customer.addresses[0];
   const currency = order.currency || settings.defaultCurrency;
   const isPickupOrder = /retrait|pickup/i.test(order.shipment?.carrier || "");
   const trackingUrl = getTrackingUrl(order.shipment?.carrier, order.shipment?.trackingNo);

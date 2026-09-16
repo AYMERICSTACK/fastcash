@@ -40,7 +40,8 @@ function buildPdf(content: string) {
 }
 
 export function generateInvoicePdf(invoice: InvoiceWithRelations) {
-  const { order } = invoice; const customer=order.customer; const address=customer.addresses[0];
+  const { order } = invoice; const customer=order.customer;
+  const address=customer.addresses.find((candidate) => candidate.label === `Commande ${order.orderNumber}`) || customer.addresses[0];
   const customerName=[customer.firstName,customer.lastName].filter(Boolean).join(" ") || customer.email;
   const c:string[]=[]; const gold="0.84 0.65 0.12", dark="0.04 0.04 0.04", muted="0.38 0.38 0.38";
   c.push(rect(0,722,595,120,dark));

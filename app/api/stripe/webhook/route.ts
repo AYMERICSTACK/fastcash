@@ -94,6 +94,47 @@ async function resolveMetadataItems(value?: string | null) {
   ).then((items) => items.filter(Boolean) as { product: Product; quantity: number; databaseId: string | null }[]);
 }
 
+type CheckoutAddress = {
+  line1: string;
+  line2: string | null;
+  postalCode: string | null;
+  city: string;
+  country: string;
+};
+
+function getCheckoutAddress(session: Stripe.Checkout.Session): CheckoutAddress | null {
+  const rawSession = session as Stripe.Checkout.Session & {
+    collected_information?: { shipping_details?: { address?: Stripe.Address | null } | null } | null;
+    shipping_details?: { address?: Stripe.Address | null } | null;
+  };
+
+  const shippingAddress =
+    rawSession.collected_information?.shipping_details?.address ||
+    rawSession.shipping_details?.address ||
+    null;
+  const billingAddress = session.customer_details?.address || null;
+  const address = shippingAddress || billingAddress;
+
+  if (!address?.line1 || !address.city || !address.country) return null;
+
+  return {
+    line1: address.line1,
+    line2: address.line2 || null,
+    postalCode: address.postal_code || null,
+    city: address.city,
+    country: address.country,
+  };
+}
+
+function formatCheckoutAddress(address: CheckoutAddress | null) {
+  if (!address) return "Adresse non transmise";
+  return [
+    [address.line1, address.line2].filter(Boolean).join(", "),
+    [address.postalCode, address.city].filter(Boolean).join(" "),
+    address.country,
+  ].filter(Boolean).join(", ");
+}
+
 function splitCustomerName(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
 
@@ -141,6 +182,7 @@ async function persistStripeOrder({
   const { firstName, lastName } = splitCustomerName(customerName);
   const safeEmail = customerEmail || `${session.id}@stripe.fastcash.local`;
   const invoiceNumber = buildInvoiceNumber(reference, settings);
+  const checkoutAddress = session.metadata?.shipping_method === "shipping" ? getCheckoutAddress(session) : null;
 
   const orderItems = metadataItems.length
     ? metadataItems.map(({ product, quantity, databaseId }, index) => {
@@ -176,6 +218,20 @@ async function persistStripeOrder({
         phone: customerPhone !== "Non renseigné" ? customerPhone : null,
       },
     });
+
+    if (checkoutAddress) {
+      await tx.address.create({
+        data: {
+          customerId: customer.id,
+          label: `Commande ${reference}`,
+          line1: checkoutAddress.line1,
+          line2: checkoutAddress.line2,
+          postalCode: checkoutAddress.postalCode,
+          city: checkoutAddress.city,
+          country: checkoutAddress.country,
+        },
+      });
+    }
 
     const order = await tx.order.create({
       data: {
@@ -367,6 +423,7 @@ function adminEmailHtml({
   customerName,
   customerEmail,
   customerPhone,
+  deliveryAddress,
   sessionId,
 }: {
   reference: string;
@@ -376,6 +433,7 @@ function adminEmailHtml({
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  deliveryAddress: string;
   sessionId: string;
 }) {
   return baseEmailLayout(`
@@ -387,7 +445,8 @@ function adminEmailHtml({
         <p style="margin:0 0 8px;color:#d4af37;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;">Client</p>
         <p style="margin:0 0 6px;"><strong>${escapeHtml(customerName)}</strong></p>
         <p style="margin:0 0 6px;">Email : ${escapeHtml(customerEmail)}</p>
-        <p style="margin:0;">Téléphone : ${escapeHtml(customerPhone)}</p>
+        <p style="margin:0 0 6px;">Téléphone : ${escapeHtml(customerPhone)}</p>
+        <p style="margin:0;">Adresse : ${escapeHtml(deliveryAddress)}</p>
       </div>
 
       <div style="margin:0 0 18px;padding:16px 18px;background:#f7f4ee;border:1px solid rgba(212,175,55,.28);border-radius:14px;">
@@ -631,19 +690,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, pending: true });
     }
 
+    const checkoutSession = await stripe.checkout.sessions.retrieve(session.id);
     const settings = await getShopSettingsFresh();
-    const currency = normalizeCurrency(session.metadata?.currency || session.currency || settings.defaultCurrency) as Currency;
-    const reference = session.metadata?.order_reference || buildOrderReference(settings);
-    const amountTotal = (session.amount_total || 0) / 100;
-    const customerName = session.customer_details?.name || "Client FAST CASH";
-    const customerEmail = session.customer_details?.email || "";
-    const customerPhone = session.customer_details?.phone || "Non renseigné";
+    const currency = normalizeCurrency(checkoutSession.metadata?.currency || checkoutSession.currency || settings.defaultCurrency) as Currency;
+    const reference = checkoutSession.metadata?.order_reference || buildOrderReference(settings);
+    const amountTotal = (checkoutSession.amount_total || 0) / 100;
+    const customerName = checkoutSession.customer_details?.name || "Client FAST CASH";
+    const customerEmail = checkoutSession.customer_details?.email || "";
+    const customerPhone = checkoutSession.customer_details?.phone || "Non renseigné";
 
-    const stripeLines = await stripe.checkout.sessions.listLineItems(session.id, {
+    const stripeLines = await stripe.checkout.sessions.listLineItems(checkoutSession.id, {
       limit: 100,
     });
 
-    const fallbackItems = await resolveMetadataItems(session.metadata?.items);
+    const fallbackItems = await resolveMetadataItems(checkoutSession.metadata?.items);
     const lines: OrderLine[] = stripeLines.data.length
       ? stripeLines.data.map((line) => ({
           name: line.description || "Produit FAST CASH",
@@ -657,7 +717,7 @@ export async function POST(req: Request) {
         }));
 
     const persistence = await persistStripeOrder({
-      session,
+      session: checkoutSession,
       reference,
       customerName,
       customerEmail,
@@ -676,7 +736,7 @@ export async function POST(req: Request) {
     revalidateOrderBackOffice(persistence.order.id);
     invalidateCatalogCache();
 
-    const offerTokens = String(session.metadata?.offer_tokens || "").split(",").filter(Boolean);
+    const offerTokens = String(checkoutSession.metadata?.offer_tokens || "").split(",").filter(Boolean);
     if (offerTokens.length) {
       await prisma.productOffer.updateMany({
         where: { purchaseToken: { in: offerTokens }, usedAt: null },
