@@ -11,7 +11,9 @@
     "check:production": "node --env-file=.env.local scripts/check-production-env.mjs",
     "check:release": "node --env-file=.env.local scripts/check-release.mjs",
     "cleanup:prelaunch": "node --env-file=.env.local scripts/cleanup-prelaunch-test-data.mjs",
-    "cleanup:prelaunch:apply": "node --env-file=.env.local scripts/cleanup-prelaunch-test-data.mjs --apply"
+    "cleanup:prelaunch:apply": "node --env-file=.env.local scripts/cleanup-prelaunch-test-data.mjs --apply",
+    "backfill:stripe-addresses": "node --env-file=.env.local scripts/backfill-stripe-addresses.mjs",
+    "backfill:stripe-addresses:apply": "node --env-file=.env.local scripts/backfill-stripe-addresses.mjs --apply"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
