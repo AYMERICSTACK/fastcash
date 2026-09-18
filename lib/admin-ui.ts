@@ -44,6 +44,7 @@ export function getOfferStatusLabel(status?: string | null) {
 
 export function formatAdminDate(value: Date | string) {
   return new Intl.DateTimeFormat("fr-CH", {
+    timeZone: "Europe/Zurich",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
