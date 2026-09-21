@@ -5,6 +5,7 @@ import { ADMIN_SESSION_COOKIE, verifyPayload, type AdminSession } from "@/lib/se
 const PILOTAGE_ROUTES: Record<string, string> = {
   "/pilotage": "/admin",
   "/pilotage/commandes": "/admin/orders",
+  "/pilotage/analytics": "/admin/analytics",
   "/pilotage/offres": "/admin/offers",
   "/pilotage/marketing": "/admin/marketing",
   "/pilotage/marketing/studio": "/admin/marketing/studio",

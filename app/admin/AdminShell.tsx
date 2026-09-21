@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 const navItems = [
   ["Dashboard", "/pilotage"],
+  ["Analytics", "/pilotage/analytics"],
   ["Commandes", "/pilotage/commandes"],
   ["Offres clients", "/pilotage/offres"],
   ["Produits", "/pilotage/produits"],
