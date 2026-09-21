@@ -43,9 +43,14 @@ export default function AnalyticsProvider({ measurementId }: { measurementId?: s
     if (!measurementId || consent !== "granted" || !publicPath) return;
 
     window.dataLayer = window.dataLayer || [];
-    window.gtag = window.gtag || function gtag(...args: unknown[]) {
-      window.dataLayer?.push(args);
-    };
+    // Google's gtag.js expects each command to be queued as the native
+    // `arguments` object (same shape as the official Google snippet).
+    // Pushing the rest-parameter array here prevents GA4 from dispatching hits.
+    if (!window.gtag) {
+      window.gtag = (function gtag() {
+        window.dataLayer?.push(arguments);
+      }) as (...args: unknown[]) => void;
+    }
 
     if (!document.querySelector(`script[data-fc-ga4="${measurementId}"]`)) {
       const script = document.createElement("script");
