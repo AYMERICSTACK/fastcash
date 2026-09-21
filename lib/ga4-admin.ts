@@ -7,6 +7,15 @@ type GaRow = { dimensionValues?: GaCell[]; metricValues?: GaCell[] };
 type GaResponse = { rows?: GaRow[]; totals?: GaRow[]; rowCount?: number; error?: { message?: string } };
 
 export type AnalyticsPeriod = "today" | "7d" | "30d";
+export type AnalyticsRealtimeSnapshot = {
+  activeUsers: number;
+  addToCart: number;
+  checkouts: number;
+  purchases: number;
+  leads: number;
+  offers: number;
+};
+
 export type AnalyticsSnapshot = {
   users: number;
   sessions: number;
@@ -75,6 +84,19 @@ async function report(token: string, propertyId: string, body: Record<string, un
   return json;
 }
 
+
+async function realtimeReport(token: string, propertyId: string, body: Record<string, unknown>) {
+  const response = await fetch(`${DATA_API}/properties/${encodeURIComponent(propertyId)}:runRealtimeReport`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const json = await response.json() as GaResponse;
+  if (!response.ok) throw new Error(json.error?.message || "Google Analytics Realtime API a refusé la requête.");
+  return json;
+}
+
 const num = (cell?: GaCell) => Number(cell?.value || 0) || 0;
 const text = (cell?: GaCell) => cell?.value || "—";
 
@@ -115,5 +137,39 @@ export async function getGa4Snapshot(period: AnalyticsPeriod): Promise<Analytics
     sources: (sources.rows || []).map((r) => ({ source: text(r.dimensionValues?.[0]), sessions: num(r.metricValues?.[0]), users: num(r.metricValues?.[1]) })),
     devices: (devices.rows || []).map((r) => ({ device: text(r.dimensionValues?.[0]), users: num(r.metricValues?.[0]) })),
     countries: (countries.rows || []).map((r) => ({ country: text(r.dimensionValues?.[0]), users: num(r.metricValues?.[0]) })),
+  };
+}
+
+
+export async function getGa4RealtimeSnapshot(): Promise<AnalyticsRealtimeSnapshot> {
+  const config = getConfig();
+  if (!config) throw new Error("CONFIG_MISSING");
+  const token = await getAccessToken(config);
+
+  const [users, events] = await Promise.all([
+    realtimeReport(token, config.propertyId, { metrics: [{ name: "activeUsers" }] }),
+    realtimeReport(token, config.propertyId, {
+      dimensions: [{ name: "eventName" }],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: {
+        filter: {
+          fieldName: "eventName",
+          inListFilter: { values: ["add_to_cart", "begin_checkout", "purchase", "generate_lead", "submit_offer"] },
+        },
+      },
+      limit: "20",
+    }),
+  ]);
+
+  const userValues = users.totals?.[0]?.metricValues || users.rows?.[0]?.metricValues || [];
+  const eventMap = new Map((events.rows || []).map((row) => [text(row.dimensionValues?.[0]), num(row.metricValues?.[0])]));
+
+  return {
+    activeUsers: num(userValues[0]),
+    addToCart: eventMap.get("add_to_cart") || 0,
+    checkouts: eventMap.get("begin_checkout") || 0,
+    purchases: eventMap.get("purchase") || 0,
+    leads: eventMap.get("generate_lead") || 0,
+    offers: eventMap.get("submit_offer") || 0,
   };
 }
