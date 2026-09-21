@@ -7,6 +7,7 @@ import { buildBreadcrumbJsonLd } from "@/components/PremiumBreadcrumb";
 import LocalizedPremiumBreadcrumb from "@/components/LocalizedPremiumBreadcrumb";
 import { getRelatedProducts } from "@/lib/related-products";
 import ProductShowroom from "@/components/ProductShowroom";
+import ProductViewTracker from "@/components/analytics/ProductViewTracker";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -178,6 +179,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   return (
     <main className="section product-page-section">
+      <ProductViewTracker product={product} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}

@@ -7,6 +7,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/components/cart/CartProvider";
 import { useCurrency } from "@/components/currency/CurrencyProvider";
 import { useI18n } from "@/lib/i18n";
+import { productAnalyticsItem, trackAnalyticsEvent } from "@/lib/analytics";
 import { getStockLabel, getStockStatus } from "@/lib/stock";
 import StripeEmbeddedCheckout from "@/components/cart/StripeEmbeddedCheckout";
 
@@ -158,6 +159,14 @@ function CartPageContent() {
         return;
       }
     }
+
+    trackAnalyticsEvent("begin_checkout", {
+      currency,
+      value: finalTotal,
+      coupon: couponDiscount > 0 ? couponCode : undefined,
+      shipping_tier: shippingMethod === "shipping" ? defaultCarrier : "Retrait boutique",
+      items: items.map((item) => productAnalyticsItem(item.product, item.quantity)),
+    });
 
     setLoading(true);
     setError("");

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -40,6 +41,7 @@ export default function EstimationPage() {
         throw new Error(payload?.message || (locale === "fr" ? "Impossible d'envoyer la demande." : "Unable to send the request."));
       }
 
+      trackAnalyticsEvent("generate_lead", { lead_type: "estimation", category: String(data.get("category") || "") });
       form.reset();
       setStatus("success");
       setMessage(payload?.message || (locale === "fr"

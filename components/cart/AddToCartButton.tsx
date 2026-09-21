@@ -6,6 +6,7 @@ import { Product } from "@/lib/products";
 import { useI18n } from "@/lib/i18n";
 import { getStockLabel, getStockStatus } from "@/lib/stock";
 import { useCart } from "./CartProvider";
+import { productAnalyticsItem, trackAnalyticsEvent } from "@/lib/analytics";
 
 export default function AddToCartButton({ product }: { product: Product }) {
   const { add, items } = useCart();
@@ -61,6 +62,11 @@ export default function AddToCartButton({ product }: { product: Product }) {
 
           const wasAlreadyInCart = currentQuantity > 0;
           add(product);
+          trackAnalyticsEvent("add_to_cart", {
+            currency: "CHF",
+            value: Number(product.price) || 0,
+            items: [productAnalyticsItem(product)],
+          });
           flashFeedback(
             "added",
             wasAlreadyInCart

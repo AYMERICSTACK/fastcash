@@ -240,8 +240,11 @@ export default async function PrivacyPage() {
         <p>
           Le site utilise des cookies ou mécanismes similaires nécessaires à son
           fonctionnement, notamment pour la session, le panier et certaines
-          préférences. Les informations détaillées figurent sur la page «
-          Politique de cookies ».
+          préférences. Avec le consentement du visiteur, Google Analytics 4 peut
+          également être activé afin de mesurer l’audience, les pages et produits
+          consultés, les sources de trafic et certaines étapes du parcours d’achat.
+          La mesure d’audience reste désactivée tant que ce consentement n’a pas été
+          accordé. Les informations détaillées figurent sur la page « Politique de cookies ».
         </p>
       </section>
 
@@ -255,7 +258,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <p className="legal-updated">Dernière mise à jour : 29 août 2026</p>
+      <p className="legal-updated">Dernière mise à jour : 21 septembre 2026</p>
     </LegalPage>
   );
 }

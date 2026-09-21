@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Product } from "@/lib/products";
+import { productAnalyticsItem, trackAnalyticsEvent } from "@/lib/analytics";
 
 export default function OfferButton({ product }: { product: Product }) {
   const [open, setOpen] = useState(false);
@@ -43,6 +44,11 @@ export default function OfferButton({ product }: { product: Product }) {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error || "Impossible d'envoyer l'offre pour le moment.");
+      trackAnalyticsEvent("submit_offer", {
+        currency: "CHF",
+        value: Number(String(fd.get("amount") || "").replace(",", ".")) || 0,
+        items: [productAnalyticsItem(product)],
+      });
       setSuccess(true);
       setMsg("Votre offre a bien été transmise à FAST CASH Genève.");
       form.reset();

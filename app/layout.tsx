@@ -7,6 +7,7 @@ import { LocaleProvider } from "@/lib/i18n";
 import { getShopSettings } from "@/lib/settings";
 import { getPublicCategories } from "@/lib/public-categories";
 import { ShopSettingsProvider } from "@/components/settings/ShopSettingsProvider";
+import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fastcash-geneve.ch";
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="fr" data-scroll-behavior="smooth">
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }} />
+        <AnalyticsProvider measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         <LocaleProvider>
           <ShopSettingsProvider settings={settings}>
             <CurrencyProvider defaultCurrency={settings.defaultCurrency}>

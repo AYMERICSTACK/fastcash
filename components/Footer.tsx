@@ -7,6 +7,7 @@ import LanguageSwitcher from "@/components/language/LanguageSwitcher";
 import { useI18n } from "@/lib/i18n";
 import SocialLinks from "@/components/SocialLinks";
 import { useShopSettings } from "@/components/settings/ShopSettingsProvider";
+import { openAnalyticsConsentSettings } from "@/lib/analytics";
 
 const categoryLinks = [
   { href: "/categories/montres", key: "watches" },
@@ -125,6 +126,8 @@ export default function Footer() {
             <Link href="/politique-confidentialite">{footer.privacy}</Link>
             <span>·</span>
             <Link href="/politique-cookies">Cookies</Link>
+            <span>·</span>
+            <button type="button" className="footer-cookie-settings" onClick={openAnalyticsConsentSettings}>Gérer les cookies</button>
             <span className="footer-separator" />
             <CurrencySwitcher />
             <LanguageSwitcher />

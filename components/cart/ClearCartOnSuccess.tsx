@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "./CartProvider";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 type CheckoutState = "checking" | "processing" | "confirmed" | "error";
 
@@ -33,6 +34,11 @@ export default function ClearCartOnSuccess({ sessionId }: { sessionId?: string }
         if (payload.paid && payload.processed) {
           setState("confirmed");
           if (!hasCleared.current) {
+            trackAnalyticsEvent("purchase", {
+              transaction_id: payload.reference || sessionId,
+              currency: payload.currency || "CHF",
+              value: Number(payload.total) || 0,
+            });
             hasCleared.current = true;
             clear();
           }
