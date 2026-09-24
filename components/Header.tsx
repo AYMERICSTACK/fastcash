@@ -204,17 +204,41 @@ function buildPrimaryNav(categories: PublicCategory[], groups: NavGroup[], local
     categories.map((category) => [`/categories/${category.slug}`, category]),
   );
 
-  return groups.map((group) => ({
-    ...group,
-    children: group.children.map((child) => {
-      const dynamic = byHref.get(child.href);
-      return {
-        ...child,
-        label: dynamic ? cleanCategoryTitle(dynamic.title, locale) : child.label,
-        productCount: dynamic?.productCount ?? 0,
-      };
-    }),
-  }));
+  return groups.map((group) => {
+    // Root universes can have zero products directly attached (for example
+    // /categories/luxe) while their children contain the stock. In that case
+    // the root itself is intentionally absent from getPublicCategories().
+    // Recover its current BO name from one of its children so a category rename
+    // is reflected in the public header without changing the stable slug.
+    const dynamicRoot = byHref.get(group.href);
+    const dynamicParentTitle = categories.find(
+      (category) =>
+        category.parentSlug &&
+        group.parentSlugs.includes(category.parentSlug) &&
+        category.parentTitle,
+    )?.parentTitle;
+    const rootTitle = dynamicRoot?.title ?? dynamicParentTitle;
+    const dynamicLabel =
+      locale === "fr" && rootTitle ? cleanCategoryTitle(rootTitle, locale) : group.label;
+    const dynamicTitle =
+      locale === "fr" && dynamicLabel !== group.label && group.title.includes(group.label)
+        ? group.title.replace(group.label, dynamicLabel)
+        : group.title;
+
+    return {
+      ...group,
+      label: dynamicLabel,
+      title: dynamicTitle,
+      children: group.children.map((child) => {
+        const dynamic = byHref.get(child.href);
+        return {
+          ...child,
+          label: dynamic ? cleanCategoryTitle(dynamic.title, locale) : child.label,
+          productCount: dynamic?.productCount ?? 0,
+        };
+      }),
+    };
+  });
 }
 
 export default function Header({ categories = [] }: { categories?: PublicCategory[] }) {

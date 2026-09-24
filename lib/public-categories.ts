@@ -107,6 +107,7 @@ export type PublicCategory = CategoryConfig & {
   productCount: number;
   parentId?: string | null;
   parentSlug?: string | null;
+  parentTitle?: string | null;
 };
 
 type PublicCategorySource = {
@@ -171,6 +172,7 @@ export function toPublicCategory(
     productCount: category._count?.products ?? 0,
     parentId: category.parentId ?? null,
     parentSlug: category.parent?.slug ?? null,
+    parentTitle: category.parent?.name ?? null,
   };
 }
 
@@ -467,7 +469,7 @@ async function getPublicProductBySlugUncached(slug: string): Promise<Product | n
 // Shared public read cache: checkout/payment paths continue to query Prisma directly.
 export const getPublicCategories = unstable_cache(
   getPublicCategoriesUncached,
-  ["getPublicCategories-v2"],
+  ["getPublicCategories-v3"],
   { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicCategoryBySlug = unstable_cache(
