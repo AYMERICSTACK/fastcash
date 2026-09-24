@@ -217,7 +217,15 @@ function buildPrimaryNav(categories: PublicCategory[], groups: NavGroup[], local
         group.parentSlugs.includes(category.parentSlug) &&
         category.parentTitle,
     )?.parentTitle;
-    const rootTitle = dynamicRoot?.title ?? dynamicParentTitle;
+
+    // IMPORTANT: use the raw BO/database label for a real category, not the
+    // curated landing-page title. Some strategic pages intentionally have an
+    // SEO/editorial title (e.g. consoles = "PlayStation • Xbox") that must not
+    // replace the navigation label "Consoles & Jeux vidéo".
+    //
+    // Zero-product root universes (such as Luxe) can be absent from the public
+    // category list, so we still recover their BO name from a child parentTitle.
+    const rootTitle = dynamicRoot?.sourceTitle ?? dynamicParentTitle;
     const dynamicLabel =
       locale === "fr" && rootTitle ? cleanCategoryTitle(rootTitle, locale) : group.label;
     const dynamicTitle =

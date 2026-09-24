@@ -108,6 +108,7 @@ export type PublicCategory = CategoryConfig & {
   parentId?: string | null;
   parentSlug?: string | null;
   parentTitle?: string | null;
+  sourceTitle?: string | null;
 };
 
 type PublicCategorySource = {
@@ -173,6 +174,10 @@ export function toPublicCategory(
     parentId: category.parentId ?? null,
     parentSlug: category.parent?.slug ?? null,
     parentTitle: category.parent?.name ?? null,
+    // Keep the raw BO/database label separate from the curated public title.
+    // Header navigation needs the editable BO name, while category landing pages
+    // may intentionally use a curated SEO title (e.g. consoles).
+    sourceTitle: displayName,
   };
 }
 
