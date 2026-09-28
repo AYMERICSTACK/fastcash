@@ -3,7 +3,7 @@ import { getFeaturedPublicProducts, getPublicCategories } from "@/lib/public-cat
 import { getGoogleBusinessReviews } from "@/lib/google-business-reviews";
 import { getManualReviewsData } from "@/lib/manual-reviews";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 
 export default async function Home() {

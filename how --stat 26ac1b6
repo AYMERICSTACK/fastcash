@@ -1,0 +1,32 @@
+[33mcommit e9d53372f4e30b03a37230f68cefef4cab1fb251[m
+Author: Aymeric DJERIDI <adjeridito@gmail.com>
+Date:   Thu Sep 10 11:30:30 2026 +0200
+
+    Optimize public catalog caching and Neon usage
+
+ app/admin/brands/[id]/page.tsx                     |  3 [32m++[m
+ app/admin/brands/page.tsx                          |  2 [32m++[m
+ app/admin/categories/[id]/page.tsx                 |  4 [32m+++[m
+ app/admin/categories/page.tsx                      |  3 [32m++[m
+ app/admin/products/[id]/page.tsx                   |  4 [32m+++[m
+ app/admin/products/new/page.tsx                    |  3 [32m++[m
+ app/api/admin/prestashop/import/brands/route.ts    |  2 [32m++[m
+ .../admin/prestashop/import/categories/route.ts    |  2 [32m++[m
+ app/api/admin/prestashop/import/images/route.ts    |  2 [32m++[m
+ app/api/admin/prestashop/import/products/route.ts  |  2 [32m++[m
+ app/api/admin/prestashop/import/stocks/route.ts    |  2 [32m++[m
+ app/api/admin/products/[id]/media/route.ts         | 21 [32m+++++++++[m[31m---[m
+ app/api/admin/settings/route.ts                    |  2 [32m++[m
+ app/api/checkout/heylight/route.ts                 |  4 [32m+[m[31m--[m
+ app/api/checkout/route.ts                          |  4 [32m+[m[31m--[m
+ app/api/heylight/webhook/v1/route.ts               |  6 [32m++[m[31m--[m
+ app/api/stripe/webhook/route.ts                    |  6 [32m++[m[31m--[m
+ app/page.tsx                                       | 14 [32m++[m[31m------[m
+ lib/cache-invalidation.ts                          | 24 [32m+++++++++++++[m
+ lib/cache-tags.ts                                  |  6 [32m++++[m
+ lib/public-brands.ts                               | 12 [32m+++++[m[31m--[m
+ lib/public-categories.ts                           | 40 [32m+++++++++++++++++++[m[31m---[m
+ lib/related-products.ts                            |  6 [32m+++[m[31m-[m
+ lib/settings.ts                                    | 10 [32m+++++[m[31m-[m
+ next-env.d.ts                                      |  2 [32m+[m[31m-[m
+ 25 files changed, 151 insertions(+), 35 deletions(-)
