@@ -10,7 +10,7 @@ import {
   getPublicBrands,
 } from "@/lib/public-brands";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fastcash-geneve.ch";
 

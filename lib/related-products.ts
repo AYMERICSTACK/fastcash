@@ -89,4 +89,4 @@ async function getRelatedProductsUncached(currentProduct: Product, limit = 4): P
   return uniqueProducts([...dbRelatedProducts, ...staticFallbackProducts]).slice(0, limit);
 }
 
-export const getRelatedProducts = unstable_cache(getRelatedProductsUncached, ["getRelatedProducts-v2"], { revalidate: 300, tags: [CACHE_TAGS.catalog] });
+export const getRelatedProducts = unstable_cache(getRelatedProductsUncached, ["getRelatedProducts-v2"], { revalidate: 3600, tags: [CACHE_TAGS.catalog] });

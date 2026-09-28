@@ -475,35 +475,35 @@ async function getPublicProductBySlugUncached(slug: string): Promise<Product | n
 export const getPublicCategories = unstable_cache(
   getPublicCategoriesUncached,
   ["getPublicCategories-v3"],
-  { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicCategoryBySlug = unstable_cache(
   getPublicCategoryBySlugUncached,
   ["getPublicCategoryBySlug-v2"],
-  { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getFeaturedPublicProducts = unstable_cache(
   getFeaturedPublicProductsUncached,
   ["getFeaturedPublicProducts-v2"],
-  { revalidate: 300, tags: [CACHE_TAGS.catalog] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog] },
 );
 export const getDealsProducts = unstable_cache(
   getDealsProductsUncached,
   ["getDealsProducts-v1"],
-  { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getProductsByPublicCategory = unstable_cache(
   getProductsByPublicCategoryUncached,
   ["getProductsByPublicCategory-v2"],
-  { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicSubcategories = unstable_cache(
   getPublicSubcategoriesUncached,
   ["getPublicSubcategories-v1"],
-  { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicProductBySlug = unstable_cache(
   getPublicProductBySlugUncached,
   ["getPublicProductBySlug-v2"],
-  { revalidate: 300, tags: [CACHE_TAGS.catalog] },
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog] },
 );

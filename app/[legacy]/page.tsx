@@ -1,5 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 
+export const revalidate = 86400;
+
 const ROUTES: Record<string, string> = {
   luxe: "/categories/maroquinerie",
   telephonie: "/categories/telephonie",

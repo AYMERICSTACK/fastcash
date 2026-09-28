@@ -73,6 +73,6 @@ async function getProductsByPublicBrandUncached(slug: string): Promise<Product[]
   return products.map(toCatalogProduct);
 }
 
-export const getPublicBrands = unstable_cache(getPublicBrandsUncached, ["getPublicBrands-v2"], { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
-export const getPublicBrandBySlug = unstable_cache(getPublicBrandBySlugUncached, ["getPublicBrandBySlug-v2"], { revalidate: 900, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
-export const getProductsByPublicBrand = unstable_cache(getProductsByPublicBrandUncached, ["getProductsByPublicBrand-v2"], { revalidate: 300, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
+export const getPublicBrands = unstable_cache(getPublicBrandsUncached, ["getPublicBrands-v2"], { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
+export const getPublicBrandBySlug = unstable_cache(getPublicBrandBySlugUncached, ["getPublicBrandBySlug-v2"], { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });
+export const getProductsByPublicBrand = unstable_cache(getProductsByPublicBrandUncached, ["getProductsByPublicBrand-v2"], { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.brands] });

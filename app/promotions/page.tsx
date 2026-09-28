@@ -6,7 +6,7 @@ import { buildBreadcrumbJsonLd } from "@/components/PremiumBreadcrumb";
 import { getDealsProducts } from "@/lib/public-categories";
 import type { CategoryConfig } from "@/lib/categories";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fastcash-geneve.ch";
 const canonicalUrl = `${siteUrl}/promotions`;

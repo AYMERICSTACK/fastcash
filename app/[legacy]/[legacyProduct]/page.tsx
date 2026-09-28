@@ -1,8 +1,9 @@
+import { unstable_cache } from "next/cache";
 import { permanentRedirect } from "next/navigation";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 3600;
 
 const FALLBACKS: Record<string, string> = {
   luxe: "/categories/maroquinerie",
@@ -18,20 +19,27 @@ type Props = {
   params: Promise<{ legacy: string; legacyProduct: string }>;
 };
 
+const getLegacyProductTarget = unstable_cache(
+  async (prestashopId: number) => {
+    const product = await prisma.product.findUnique({
+      where: { prestashopId },
+      select: { slug: true, active: true },
+    });
+
+    return product?.active ? `/produits/${product.slug}` : null;
+  },
+  ["legacy-product-redirect-v1"],
+  { revalidate: 3600, tags: [CACHE_TAGS.catalog] },
+);
+
 export default async function LegacyProduct({ params }: Props) {
   const { legacy, legacyProduct } = await params;
   const match = legacyProduct.match(/^(\d+)(?:-|\.html|$)/);
   const prestashopId = match ? Number(match[1]) : null;
 
   if (prestashopId && Number.isFinite(prestashopId)) {
-    const product = await prisma.product.findUnique({
-      where: { prestashopId },
-      select: { slug: true, active: true },
-    });
-
-    if (product?.active) {
-      permanentRedirect(`/produits/${product.slug}`);
-    }
+    const target = await getLegacyProductTarget(prestashopId);
+    if (target) permanentRedirect(target);
   }
 
   permanentRedirect(FALLBACKS[legacy] ?? "/recherche");
