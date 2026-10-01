@@ -8,6 +8,7 @@ export type Product = {
   reference: string;
   category: string;
   categorySlug: string;
+  categoryId?: string | null;
   price: number;
   stock: number;
   condition?: string;
@@ -16,6 +17,7 @@ export type Product = {
   description: string;
   brand?: string;
   brandSlug?: string;
+  brandId?: string | null;
   importedFromPrestashop?: boolean;
 };
 export const products = (productsData as Product[]).map((product) => ({

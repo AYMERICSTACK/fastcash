@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { getCategory, strategicCategories, type CategoryConfig } from "@/lib/categories";
@@ -183,14 +184,14 @@ export function toPublicCategory(
 }
 
 async function getPublicCategoriesUncached(): Promise<PublicCategory[]> {
-  const dbCategories = await traceNeonRead({ source: "getPublicCategoriesUncached", model: "Category", operation: "findMany", route_type: "public_categories", relations: ["parent", "_count.products"] }, () => prisma.category.findMany({
+  const dbCategories = await prisma.category.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
     include: {
       parent: { select: { name: true, slug: true } },
       _count: { select: { products: true } },
     },
-  }));
+  });
 
   if (!dbCategories.length) {
     return strategicCategories.map((category) => ({ ...category, productCount: 0 }));
@@ -235,27 +236,27 @@ async function getPublicCategoriesUncached(): Promise<PublicCategory[]> {
 async function getPublicCategoryBySlugUncached(slug: string): Promise<PublicCategory | null> {
   const canonicalSlug = resolvePublicCategorySlug(slug);
   const sources = sourceCategorySlugs(canonicalSlug);
-  const category = await traceNeonRead({ source: "getPublicCategoryBySlugUncached.category", model: "Category", operation: "findFirst", route_type: "category", slug: canonicalSlug, relations: ["parent", "_count.products"] }, () => prisma.category.findFirst({
+  const category = await prisma.category.findFirst({
     where: { slug: { in: sources }, active: true },
     include: {
       parent: { select: { name: true, slug: true } },
       _count: { select: { products: true } },
     },
     orderBy: { id: "asc" },
-  }));
+  });
 
   if (
     category &&
     !isLegacyRootAccessories(category) &&
     isPublicCategorySlug(category.slug)
   ) {
-    const duplicateCount = await traceNeonRead({ source: "getPublicCategoryBySlugUncached.duplicateCount", model: "Category", operation: "count", route_type: "category", slug: canonicalSlug }, () => prisma.category.count({
+    const duplicateCount = await prisma.category.count({
       where: {
         active: true,
         name: { equals: category.name, mode: "insensitive" },
         products: { some: {} },
       },
-    }));
+    });
 
     const duplicatedNames =
       duplicateCount > 1
@@ -282,6 +283,8 @@ export function toCatalogProduct(product: {
   price: number;
   stock: number;
   condition?: string | null;
+  categoryId?: string | null;
+  brandId?: string | null;
   category?: { name: string; slug: string } | null;
   brand?: { name: string; slug: string } | null;
   media?: Array<{ id: string; alt: string | null; isPrimary: boolean; media: { url: string } }>;
@@ -293,6 +296,7 @@ export function toCatalogProduct(product: {
     reference: product.reference ?? "",
     category: product.category?.name ?? "Catalogue",
     categorySlug: product.category?.slug ? canonicalCategorySlug(product.category.slug) : "catalogue",
+    categoryId: product.categoryId ?? null,
     price: product.price,
     stock: product.stock,
     condition: product.condition ?? "GOOD",
@@ -301,6 +305,7 @@ export function toCatalogProduct(product: {
     description: product.description ?? "",
     brand: product.brand?.name,
     brandSlug: product.brand?.slug,
+    brandId: product.brandId ?? null,
     importedFromPrestashop: product.prestashopId != null,
   };
 }
@@ -316,7 +321,7 @@ export async function searchPublicProducts(query: string, limit = 48): Promise<P
 
   const terms = q.split(/\s+/).filter(Boolean);
 
-  const products = await traceNeonRead({ source: "searchPublicProducts", model: "Product", operation: "findMany", route_type: "search", has_query: true, query_length: q.length, relations: ["category", "brand", "media.media"] }, () => prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: {
       active: true,
       AND: terms.map((term) => ({
@@ -336,13 +341,13 @@ export async function searchPublicProducts(query: string, limit = 48): Promise<P
     },
     orderBy: [{ stock: "desc" }, { updatedAt: "desc" }],
     take: limit,
-  }));
+  });
 
   return products.map(toCatalogProduct);
 }
 
 async function getFeaturedPublicProductsUncached(limit = 8): Promise<Product[]> {
-  const products = await traceNeonRead({ source: "getFeaturedPublicProductsUncached", model: "Product", operation: "findMany", route_type: "homepage_featured", relations: ["category", "brand", "media.media"] }, () => prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: {
       active: true,
       stock: { gt: 0 },
@@ -354,16 +359,16 @@ async function getFeaturedPublicProductsUncached(limit = 8): Promise<Product[]> 
     },
     orderBy: [{ updatedAt: "desc" }],
     take: limit,
-  }));
+  });
 
   return products.map(toCatalogProduct);
 }
 
 async function getDealsProductsUncached(): Promise<Product[]> {
-  const dealsCategory = await traceNeonRead({ source: "getDealsProductsUncached.category", model: "Category", operation: "findUnique", route_type: "deals", slug: "bonnes-affaires" }, () => prisma.category.findUnique({
+  const dealsCategory = await prisma.category.findUnique({
     where: { slug: "bonnes-affaires" },
     select: { id: true },
-  }));
+  });
 
   if (!dealsCategory) return [];
 
@@ -371,7 +376,7 @@ async function getDealsProductsUncached(): Promise<Product[]> {
   // "Bonnes Affaires" reste la catégorie métier unique en base.
   // On inclut la catégorie principale ET les relations secondaires afin de
   // conserver toute la sélection historique de bonnes affaires.
-  const products = await traceNeonRead({ source: "getDealsProductsUncached.products", model: "Product", operation: "findMany", route_type: "deals", relations: ["category", "brand", "media.media", "categoryLinks"] }, () => prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: {
       active: true,
       OR: [
@@ -385,7 +390,7 @@ async function getDealsProductsUncached(): Promise<Product[]> {
       media: { orderBy: { position: "asc" }, include: { media: { select: { url: true } } } },
     },
     orderBy: [{ stock: "desc" }, { updatedAt: "desc" }],
-  }));
+  });
 
   return products.map(toCatalogProduct);
 }
@@ -399,26 +404,24 @@ async function getProductsByPublicCategoryUncached(slug: string): Promise<Produc
   // volontairement pas sur toutes les relations ProductCategory : cela évite
   // qu'une relation secondaire historique fasse remonter un produit dans un
   // mauvais univers (ex. maroquinerie dans Informatique).
-  const roots = await traceNeonRead({ source: "getProductsByPublicCategoryUncached.roots", model: "Category", operation: "findMany", route_type: "category", slug: resolvedSlug }, () => prisma.category.findMany({
+  const roots = await prisma.category.findMany({
     where: { slug: { in: categorySlugs }, active: true },
     select: { id: true },
-  }));
+  });
 
   const categoryIds = new Set(roots.map((category) => category.id));
   let frontier = [...categoryIds];
-  let level = 0;
   while (frontier.length) {
-    level += 1;
-    const children = await traceNeonRead({ source: "getProductsByPublicCategoryUncached.children", model: "Category", operation: "findMany", route_type: "category", slug: resolvedSlug, level }, () => prisma.category.findMany({
+    const children = await prisma.category.findMany({
       where: { parentId: { in: frontier }, active: true },
       select: { id: true },
-    }));
+    });
     const next = children.map((category) => category.id).filter((id) => !categoryIds.has(id));
     next.forEach((id) => categoryIds.add(id));
     frontier = next;
   }
 
-  const products = await traceNeonRead({ source: "getProductsByPublicCategoryUncached.products", model: "Product", operation: "findMany", route_type: "category", slug: resolvedSlug, relations: ["category", "brand", "media.media"] }, () => prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: {
       active: true,
       categoryId: { in: [...categoryIds] },
@@ -429,7 +432,7 @@ async function getProductsByPublicCategoryUncached(slug: string): Promise<Produc
       media: { orderBy: { position: "asc" }, include: { media: { select: { url: true } } } },
     },
     orderBy: [{ stock: "desc" }, { updatedAt: "desc" }],
-  }));
+  });
 
   return products.map(toCatalogProduct);
 }
@@ -438,21 +441,21 @@ async function getProductsByPublicCategoryUncached(slug: string): Promise<Produc
 async function getPublicSubcategoriesUncached(parentSlug: string): Promise<PublicCategory[]> {
   const canonicalSlug = resolvePublicCategorySlug(parentSlug);
   const sourceSlugs = sourceCategorySlugs(canonicalSlug);
-  const parents = await traceNeonRead({ source: "getPublicSubcategoriesUncached.parents", model: "Category", operation: "findMany", route_type: "category_subcategories", slug: canonicalSlug }, () => prisma.category.findMany({
+  const parents = await prisma.category.findMany({
     where: { slug: { in: sourceSlugs }, active: true },
     select: { id: true },
-  }));
+  });
 
   if (!parents.length) return [];
 
-  const children = await traceNeonRead({ source: "getPublicSubcategoriesUncached.children", model: "Category", operation: "findMany", route_type: "category_subcategories", slug: canonicalSlug, relations: ["parent", "_count.products"] }, () => prisma.category.findMany({
+  const children = await prisma.category.findMany({
     where: { parentId: { in: parents.map((parent) => parent.id) }, active: true },
     orderBy: [{ position: "asc" }, { name: "asc" }],
     include: {
       parent: { select: { name: true, slug: true } },
       _count: { select: { products: true } },
     },
-  }));
+  });
 
   return children
     .filter((category) => isPublicCategorySlug(category.slug))
@@ -505,8 +508,9 @@ export const getPublicSubcategories = unstable_cache(
   ["getPublicSubcategories-v1"],
   { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
-export const getPublicProductBySlug = unstable_cache(
+const getPublicProductBySlugPersistent = unstable_cache(
   getPublicProductBySlugUncached,
   ["getPublicProductBySlug-v2"],
   { revalidate: 3600, tags: [CACHE_TAGS.catalog] },
 );
+export const getPublicProductBySlug = cache(getPublicProductBySlugPersistent);

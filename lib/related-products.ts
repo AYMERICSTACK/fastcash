@@ -42,31 +42,17 @@ function getStaticRelatedProducts(currentProduct: Product, limit: number) {
 }
 
 async function getRelatedProductsUncached(currentProduct: Product, limit = 4): Promise<Product[]> {
-  const currentDbProduct = await traceNeonRead({ source: "getRelatedProductsUncached.currentProduct", model: "Product", operation: "findUnique", route_type: "related_products", slug: currentProduct.slug }, () => prisma.product.findUnique({
-    where: { slug: currentProduct.slug },
-    select: {
-      id: true,
-      slug: true,
-      categoryId: true,
-      brandId: true,
-    },
-  }));
-
-  if (!currentDbProduct) {
-    return getStaticRelatedProducts(currentProduct, limit);
-  }
-
   const relatedFilters = [
-    currentDbProduct.categoryId ? { categoryId: currentDbProduct.categoryId } : null,
-    currentDbProduct.brandId ? { brandId: currentDbProduct.brandId } : null,
+    currentProduct.categoryId ? { categoryId: currentProduct.categoryId } : null,
+    currentProduct.brandId ? { brandId: currentProduct.brandId } : null,
   ].filter(Boolean) as Array<{ categoryId: string } | { brandId: string }>;
 
-  if (!relatedFilters.length) return [];
+  if (!relatedFilters.length) return getStaticRelatedProducts(currentProduct, limit);
 
   const relatedDbProducts = await traceNeonRead({ source: "getRelatedProductsUncached.candidates", model: "Product", operation: "findMany", route_type: "related_products", slug: currentProduct.slug, relations: ["category", "brand"] }, () => prisma.product.findMany({
     where: {
       active: true,
-      slug: { not: currentDbProduct.slug },
+      slug: { not: currentProduct.slug },
       OR: relatedFilters,
     },
     include: {
