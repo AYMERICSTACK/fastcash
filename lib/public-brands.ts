@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Product } from "@/lib/products";
 import { toCatalogProduct } from "@/lib/public-categories";
 import type { CategoryConfig } from "@/lib/categories";
+import { traceNeonRead } from "@/lib/neon-trace";
 
 const brandImages: Record<string, string> = {
   apple: "/images/categories/apple.jpg",
@@ -38,26 +39,26 @@ function defaultBrandConfig(brand: { id: string; name: string; slug: string; _co
 }
 
 async function getPublicBrandsUncached(): Promise<PublicBrand[]> {
-  const brands = await prisma.brand.findMany({
+  const brands = await traceNeonRead({ source: "getPublicBrandsUncached", model: "Brand", operation: "findMany", route_type: "public_brands", relations: ["_count.products"] }, () => prisma.brand.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { products: true } } },
-  });
+  }));
 
   return brands.filter((brand) => brand._count.products > 0).map(defaultBrandConfig);
 }
 
 async function getPublicBrandBySlugUncached(slug: string): Promise<PublicBrand | null> {
-  const brand = await prisma.brand.findUnique({
+  const brand = await traceNeonRead({ source: "getPublicBrandBySlugUncached", model: "Brand", operation: "findUnique", route_type: "brand", slug, relations: ["_count.products"] }, () => prisma.brand.findUnique({
     where: { slug },
     include: { _count: { select: { products: true } } },
-  });
+  }));
 
   if (!brand || brand._count.products === 0) return null;
   return defaultBrandConfig(brand);
 }
 
 async function getProductsByPublicBrandUncached(slug: string): Promise<Product[]> {
-  const products = await prisma.product.findMany({
+  const products = await traceNeonRead({ source: "getProductsByPublicBrandUncached", model: "Product", operation: "findMany", route_type: "brand", slug, relations: ["category", "brand", "media.media"] }, () => prisma.product.findMany({
     where: {
       active: true,
       brand: { slug },
@@ -68,7 +69,7 @@ async function getProductsByPublicBrandUncached(slug: string): Promise<Product[]
       media: { orderBy: { position: "asc" }, include: { media: { select: { url: true } } } },
     },
     orderBy: [{ stock: "desc" }, { updatedAt: "desc" }],
-  });
+  }));
 
   return products.map(toCatalogProduct);
 }

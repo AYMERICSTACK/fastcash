@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { traceNeonRead } from "@/lib/neon-trace";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { normalizeCurrency, type Currency } from "@/lib/currency";
@@ -144,7 +145,7 @@ function value(map: Map<string, string>, key: string, fallback: string) {
 
 export async function getShopSettingsFresh(): Promise<ShopSettings> {
   try {
-    const rows = await prisma.setting.findMany();
+    const rows = await traceNeonRead({ source: "getShopSettingsFresh", model: "Setting", operation: "findMany", route_type: "shop_settings" }, () => prisma.setting.findMany());
     const s = new Map(rows.map((row) => [row.key, row.value]));
 
     return {

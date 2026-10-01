@@ -3,6 +3,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { products as staticProducts, type Product } from "@/lib/products";
 import { toCatalogProduct } from "@/lib/public-categories";
+import { traceNeonRead } from "@/lib/neon-trace";
 
 function scoreRelatedProduct(candidate: Product, current: Product) {
   let score = 0;
@@ -41,7 +42,7 @@ function getStaticRelatedProducts(currentProduct: Product, limit: number) {
 }
 
 async function getRelatedProductsUncached(currentProduct: Product, limit = 4): Promise<Product[]> {
-  const currentDbProduct = await prisma.product.findUnique({
+  const currentDbProduct = await traceNeonRead({ source: "getRelatedProductsUncached.currentProduct", model: "Product", operation: "findUnique", route_type: "related_products", slug: currentProduct.slug }, () => prisma.product.findUnique({
     where: { slug: currentProduct.slug },
     select: {
       id: true,
@@ -49,7 +50,7 @@ async function getRelatedProductsUncached(currentProduct: Product, limit = 4): P
       categoryId: true,
       brandId: true,
     },
-  });
+  }));
 
   if (!currentDbProduct) {
     return getStaticRelatedProducts(currentProduct, limit);
@@ -62,7 +63,7 @@ async function getRelatedProductsUncached(currentProduct: Product, limit = 4): P
 
   if (!relatedFilters.length) return [];
 
-  const relatedDbProducts = await prisma.product.findMany({
+  const relatedDbProducts = await traceNeonRead({ source: "getRelatedProductsUncached.candidates", model: "Product", operation: "findMany", route_type: "related_products", slug: currentProduct.slug, relations: ["category", "brand"] }, () => prisma.product.findMany({
     where: {
       active: true,
       slug: { not: currentDbProduct.slug },
@@ -74,7 +75,7 @@ async function getRelatedProductsUncached(currentProduct: Product, limit = 4): P
     },
     orderBy: [{ stock: "desc" }, { updatedAt: "desc" }],
     take: Math.max(limit * 3, 8),
-  });
+  }));
 
   const dbRelatedProducts = relatedDbProducts
     .map(toCatalogProduct)

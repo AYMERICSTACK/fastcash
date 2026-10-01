@@ -3,6 +3,7 @@ import { products } from "@/lib/products";
 import { getPublicCategories } from "@/lib/public-categories";
 import { prisma } from "@/lib/prisma";
 import { getPublicBrands } from "@/lib/public-brands";
+import { traceNeonRead } from "@/lib/neon-trace";
 
 const base = process.env.NEXT_PUBLIC_SITE_URL || "https://fastcash-geneve.ch";
 const now = new Date();
@@ -63,10 +64,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.86,
   }));
 
-  const dbProducts = await prisma.product.findMany({
+  const dbProducts = await traceNeonRead({ source: "sitemap.products", model: "Product", operation: "findMany", route_type: "sitemap" }, () => prisma.product.findMany({
     where: { active: true },
     select: { slug: true, stock: true, updatedAt: true },
-  });
+  }));
   const dbProductSlugs = new Set(dbProducts.map((product) => product.slug));
 
   const productRoutes: MetadataRoute.Sitemap = [

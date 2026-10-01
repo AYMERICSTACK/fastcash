@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/session";
 import { sendTransactionalEmail, offerReceivedAdminEmail, offerReceivedCustomerEmail } from "@/lib/transactional-emails";
+import { traceNeonRead } from "@/lib/neon-trace";
 
 function clean(value: unknown, max: number) {
   return String(value ?? "").trim().slice(0, max);
@@ -33,8 +34,8 @@ export async function POST(req: Request) {
     const rawProductId = clean(body.productId, 80);
     const prestashopId = /^\d+$/.test(rawProductId) ? Number(rawProductId) : null;
     const product = prestashopId !== null
-      ? await prisma.product.findUnique({ where: { prestashopId } })
-      : await prisma.product.findUnique({ where: { id: rawProductId } });
+      ? await traceNeonRead({ source: "offers.lookupProduct", model: "Product", operation: "findUnique", route_type: "offer", lookup_key: "prestashopId" }, () => prisma.product.findUnique({ where: { prestashopId } }))
+      : await traceNeonRead({ source: "offers.lookupProduct", model: "Product", operation: "findUnique", route_type: "offer", lookup_key: "id" }, () => prisma.product.findUnique({ where: { id: rawProductId } }));
 
     if (!product || !product.active || product.stock < 1) {
       console.warn("[offers] rejected_product", {

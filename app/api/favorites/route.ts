@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"; import { prisma } from "@/lib/prisma"; import { getCustomerSession } from "@/lib/session";
-async function resolveProduct(id:string){const n=/^\d+$/.test(id)?Number(id):null;return n!==null?prisma.product.findUnique({where:{prestashopId:n}}):prisma.product.findUnique({where:{id}})}
+import { NextResponse } from "next/server"; import { prisma } from "@/lib/prisma"; import { getCustomerSession } from "@/lib/session"; import { traceNeonRead } from "@/lib/neon-trace";
+async function resolveProduct(id:string){const n=/^\d+$/.test(id)?Number(id):null;return n!==null?traceNeonRead({source:"favorites.resolveProduct",model:"Product",operation:"findUnique",route_type:"favorites",lookup_key:"prestashopId"},()=>prisma.product.findUnique({where:{prestashopId:n}})):traceNeonRead({source:"favorites.resolveProduct",model:"Product",operation:"findUnique",route_type:"favorites",lookup_key:"id"},()=>prisma.product.findUnique({where:{id}}))}
 export async function GET(req:Request){const s=await getCustomerSession();if(!s)return NextResponse.json({authenticated:false,favorite:false});const params=new URL(req.url).searchParams;
 if(params.get("ids")==="1"){
  const rows=await prisma.favorite.findMany({where:{customerId:s.customerId},select:{productId:true}});

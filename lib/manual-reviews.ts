@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { traceNeonRead } from "@/lib/neon-trace";
 
 import type {
   GoogleBusinessReviewsData,
@@ -125,9 +126,9 @@ function applyVerifiedRatings(reviews: ManualReview[]) {
 }
 
 export async function getManualReviews(): Promise<ManualReview[]> {
-  const row = await prisma.setting.findUnique({
+  const row = await traceNeonRead({ source: "getManualReviews", model: "Setting", operation: "findUnique", route_type: "homepage_reviews_fallback", lookup_key: "manual_reviews" }, () => prisma.setting.findUnique({
     where: { key: KEY },
-  });
+  }));
 
   if (!row) {
     return applyVerifiedRatings(INITIAL);

@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { permanentRedirect } from "next/navigation";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
+import { traceNeonRead } from "@/lib/neon-trace";
 
 export const revalidate = 3600;
 
@@ -21,10 +22,10 @@ type Props = {
 
 const getLegacyProductTarget = unstable_cache(
   async (prestashopId: number) => {
-    const product = await prisma.product.findUnique({
+    const product = await traceNeonRead({ source: "getLegacyProductTarget", model: "Product", operation: "findUnique", route_type: "legacy_product_redirect", lookup_key: "prestashopId", prestashop_id: prestashopId }, () => prisma.product.findUnique({
       where: { prestashopId },
       select: { slug: true, active: true },
-    });
+    }));
 
     return product?.active ? `/produits/${product.slug}` : null;
   },

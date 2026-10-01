@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProductBySlug, products, type Product } from "@/lib/products";
 import { getPublicProductBySlug } from "@/lib/public-categories";
 import { prisma } from "@/lib/prisma";
+import { traceNeonRead } from "@/lib/neon-trace";
 import { buildBreadcrumbJsonLd } from "@/components/PremiumBreadcrumb";
 import LocalizedPremiumBreadcrumb from "@/components/LocalizedPremiumBreadcrumb";
 import { getRelatedProducts } from "@/lib/related-products";
@@ -55,10 +56,10 @@ function getProductSeoDescription(product: Product) {
 }
 
 export async function generateStaticParams() {
-  const dbProducts = await prisma.product.findMany({
+  const dbProducts = await traceNeonRead({ source: "product.generateStaticParams", model: "Product", operation: "findMany", route_type: "build_static_params" }, () => prisma.product.findMany({
     where: { active: true },
     select: { slug: true },
-  });
+  }));
   const slugs = new Set([...products.map((product) => product.slug), ...dbProducts.map((product) => product.slug)]);
 
   return Array.from(slugs).map((slug) => ({ slug }));
