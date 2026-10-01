@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search, ShoppingBag, User, Store, X } from "lucide-react";
+import { ChevronDown, Menu, Search, ShoppingBag, User, Store, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "./cart/CartProvider";
 import CurrencySwitcher from "./currency/CurrencySwitcher";
@@ -264,6 +264,7 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeMega, setActiveMega] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [openMobileGroups, setOpenMobileGroups] = useState<string[]>([]);
   const closeMegaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -316,6 +317,13 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
     setActiveMega(null);
     setOpen(false);
     setSearchOpen(false);
+    setOpenMobileGroups([]);
+  };
+
+  const toggleMobileGroup = (href: string) => {
+    setOpenMobileGroups((current) =>
+      current.includes(href) ? current.filter((item) => item !== href) : [...current, href],
+    );
   };
 
   return (
@@ -516,16 +524,37 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
             <div className="luxe-mobile-card">
               <p>{dict.nav.premiumCatalog}</p>
               <Link href="/recherche" onClick={() => setOpen(false)}>{dict.nav.mobileSearch}</Link>
-              {primaryNav.map((group) => (
-                <div className="luxe-mobile-category-group" key={group.href}>
-                  <Link className="luxe-mobile-category-root" href={group.href} onClick={() => setOpen(false)}>{group.label}</Link>
-                  <div className="luxe-mobile-category-children">
-                    {group.children.map((category) => (
-                      <Link key={category.href} href={category.href} onClick={() => setOpen(false)}>{compactCategoryLabel(category.label, locale)}</Link>
-                    ))}
+              {primaryNav.map((group) => {
+                const expanded = openMobileGroups.includes(group.href);
+                const panelId = `mobile-category-${group.href.replace(/[^a-z0-9]+/gi, "-")}`;
+
+                return (
+                  <div className={`luxe-mobile-category-group${expanded ? " is-open" : ""}`} key={group.href}>
+                    <button
+                      type="button"
+                      className="luxe-mobile-category-root"
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      onClick={() => toggleMobileGroup(group.href)}
+                    >
+                      <span>{group.label}</span>
+                      <ChevronDown size={22} aria-hidden="true" />
+                    </button>
+                    <div
+                      id={panelId}
+                      className="luxe-mobile-category-children"
+                      hidden={!expanded}
+                    >
+                      <Link className="luxe-mobile-category-all" href={group.href} onClick={closeAllMenus}>
+                        {locale === "fr" ? `Voir tout ${group.label}` : `View all ${group.label}`}
+                      </Link>
+                      {group.children.map((category) => (
+                        <Link key={category.href} href={category.href} onClick={closeAllMenus}>{compactCategoryLabel(category.label, locale)}</Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <span className="luxe-mobile-section-title">{locale === "fr" ? "À découvrir" : "Discover"}</span>
               <Link href="/promotions" onClick={() => setOpen(false)}>{dealsLabel}</Link>
             </div>
