@@ -530,24 +530,38 @@ export default function Header({ categories = [] }: { categories?: PublicCategor
 
                 return (
                   <div className={`luxe-mobile-category-group${expanded ? " is-open" : ""}`} key={group.href}>
-                    <button
-                      type="button"
-                      className="luxe-mobile-category-root"
-                      aria-expanded={expanded}
-                      aria-controls={panelId}
-                      onClick={() => toggleMobileGroup(group.href)}
-                    >
-                      <span>{group.label}</span>
-                      <ChevronDown size={22} aria-hidden="true" />
-                    </button>
+                    <div className="luxe-mobile-category-root">
+                      <Link
+                        className="luxe-mobile-category-root-link"
+                        href={group.href}
+                        onClick={closeAllMenus}
+                      >
+                        {group.label}
+                      </Link>
+                      <button
+                        type="button"
+                        className="luxe-mobile-category-toggle"
+                        aria-label={
+                          expanded
+                            ? locale === "fr"
+                              ? `Fermer ${group.label}`
+                              : `Close ${group.label}`
+                            : locale === "fr"
+                              ? `Ouvrir ${group.label}`
+                              : `Open ${group.label}`
+                        }
+                        aria-expanded={expanded}
+                        aria-controls={panelId}
+                        onClick={() => toggleMobileGroup(group.href)}
+                      >
+                        <ChevronDown size={22} aria-hidden="true" />
+                      </button>
+                    </div>
                     <div
                       id={panelId}
                       className="luxe-mobile-category-children"
                       hidden={!expanded}
                     >
-                      <Link className="luxe-mobile-category-all" href={group.href} onClick={closeAllMenus}>
-                        {locale === "fr" ? `Voir tout ${group.label}` : `View all ${group.label}`}
-                      </Link>
                       {group.children.map((category) => (
                         <Link key={category.href} href={category.href} onClick={closeAllMenus}>{compactCategoryLabel(category.label, locale)}</Link>
                       ))}
