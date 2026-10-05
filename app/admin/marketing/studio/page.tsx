@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { requireAdminSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import { getInstagramConnection } from "@/lib/instagram-oauth";
 import MarketingStudio from "../MarketingStudio";
 import styles from "../../admin.module.css";
@@ -9,27 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MarketingStudioPage() {
   await requireAdminSession();
-
-  const [products, instagram] = await Promise.all([
-    prisma.product.findMany({
-      where: {
-        active: true,
-        stock: { gt: 0 },
-      },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        image: true,
-        descriptionShort: true,
-        category: { select: { name: true } },
-        brand: { select: { name: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 500,
-    }),
-    getInstagramConnection(),
-  ]);
+  const instagram = await getInstagramConnection();
 
   const expiresSoon = instagram.expiresAt
     ? instagram.expiresAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000
@@ -40,10 +19,9 @@ export default async function MarketingStudioPage() {
       <header className={styles.marketingStudioHero}>
         <div>
           <p>Marketing · Réseaux sociaux</p>
-          <h1>Studio visuels</h1>
+          <h1>Publication Instagram</h1>
           <span>
-            Créez un visuel Instagram FAST CASH à partir d’un produit du catalogue,
-            puis exportez-le en haute définition.
+            Importez un visuel créé sur Canva, ajoutez votre légende puis publiez-le directement sur Instagram.
           </span>
         </div>
         <Link href="/pilotage/marketing" className={styles.buttonSecondary}>
@@ -87,7 +65,10 @@ export default async function MarketingStudioPage() {
         </div>
       </section>
 
-      <MarketingStudio products={products} instagramConnected={instagram.connected} instagramUsername={instagram.username || "fastcash.ge"} />
+      <MarketingStudio
+        instagramConnected={instagram.connected}
+        instagramUsername={instagram.username || "fastcash.ge"}
+      />
     </>
   );
 }
