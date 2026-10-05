@@ -3878,3 +3878,29 @@
 .analyticsLiveStats small{color:rgba(247,241,228,.55);font-size:9px;font-weight:750}
 @media(max-width:1100px){.analyticsLiveStrip{align-items:flex-start;flex-direction:column}.analyticsLiveStats{width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.analyticsLiveStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V20.2 — publication Instagram depuis le Studio */
+.marketingCaption{
+  width:100%;
+  min-height:142px;
+  resize:vertical;
+  padding:12px 13px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#111;
+  color:#f7f1e4;
+  font:inherit;
+  line-height:1.5;
+  outline:none;
+}
+.marketingCaption:focus{border-color:rgba(212,175,55,.7);box-shadow:0 0 0 3px rgba(212,175,55,.08)}
+.marketingCaption:disabled{opacity:.52;cursor:not-allowed}
+.marketingCaptionCount{justify-self:end;color:#777268;font-size:10px}
+.marketingPreviewActions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.marketingPublishStatus{margin:14px 0 0;padding:11px 13px;border-radius:11px;font-size:12px;font-weight:800;line-height:1.45;text-align:center}
+.marketingPublishSuccess{border:1px solid rgba(88,183,93,.35);background:rgba(88,183,93,.10);color:#c8efc5}
+.marketingPublishError{border:1px solid rgba(214,84,84,.38);background:rgba(214,84,84,.11);color:#ffc2c2}
+.marketingPublishWarning{border:1px solid rgba(212,175,55,.30);background:rgba(212,175,55,.08);color:#e7ca69}
+@media(max-width:640px){.marketingPreviewActions{display:grid;grid-template-columns:1fr}.marketingPreviewActions .button,.marketingPreviewActions .buttonSecondary{width:100%;justify-content:center}}
+.marketingPublishStatus span{display:block}
+.marketingPublishStatus a{display:inline-flex;margin-top:7px;color:inherit;font-weight:950;text-decoration:underline;text-underline-offset:3px}

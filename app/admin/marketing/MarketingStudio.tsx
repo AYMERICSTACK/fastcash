@@ -22,7 +22,7 @@ const themeLabels: Record<Theme, string> = {
   watches: "Montres & bijoux",
 };
 
-export default function MarketingStudio({ products }: { products: Product[] }) {
+export default function MarketingStudio({ products, instagramConnected, instagramUsername }: { products: Product[]; instagramConnected: boolean; instagramUsername: string }) {
   const [query, setQuery] = useState("");
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const selected = products.find((p) => p.id === productId) ?? products[0];
@@ -35,6 +35,9 @@ export default function MarketingStudio({ products }: { products: Product[] }) {
   const [badge, setBadge] = useState("DISPONIBLE");
   const [zoom, setZoom] = useState<-1 | 0 | 1>(0);
   const [busy, setBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMessage, setPublishMessage] = useState<{ kind: "success" | "error"; text: string; permalink?: string | null } | null>(null);
+  const [caption, setCaption] = useState(selected ? `${selected.name}\n\nDisponible chez FAST CASH Genève.\n\n#fastcashgeneve #geneve` : "");
   const [previewError, setPreviewError] = useState(false);
 
   const filtered = useMemo(() => {
@@ -66,6 +69,8 @@ export default function MarketingStudio({ products }: { products: Product[] }) {
     setBadge("DISPONIBLE");
     setZoom(0);
     setQuery(p.name);
+    setCaption(`${p.name}\n\nDisponible chez FAST CASH Genève.\n\n#fastcashgeneve #geneve`);
+    setPublishMessage(null);
     setPreviewError(false);
   }
 
@@ -101,6 +106,46 @@ export default function MarketingStudio({ products }: { products: Product[] }) {
       URL.revokeObjectURL(href);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function publishToInstagram() {
+    if (!instagramConnected || publishing) return;
+    const confirmed = window.confirm(format === "story"
+      ? `Publier cette Story sur @${instagramUsername} ?`
+      : `Publier ce visuel sur @${instagramUsername} ?`);
+    if (!confirmed) return;
+    setPublishing(true);
+    setPublishMessage(null);
+
+    try {
+      const visualResponse = await fetch(previewUrl, { cache: "no-store" });
+      if (!visualResponse.ok) throw new Error("Impossible de générer le visuel à publier.");
+      const image = await visualResponse.blob();
+
+      const form = new FormData();
+      form.set("image", new File([image], `fastcash-${format}.png`, { type: image.type || "image/png" }));
+      form.set("format", format);
+      form.set("caption", caption);
+
+      const response = await fetch("/api/admin/instagram/publish", { method: "POST", body: form });
+      const payload = await response.json().catch(() => ({})) as { error?: string; username?: string; format?: string; permalink?: string | null };
+      if (!response.ok) throw new Error(payload.error || "Publication Instagram impossible.");
+
+      setPublishMessage({
+        kind: "success",
+        text: format === "story"
+          ? `Story publiée sur @${payload.username || instagramUsername}.`
+          : `Publication envoyée sur @${payload.username || instagramUsername}.`,
+        permalink: payload.permalink || null,
+      });
+    } catch (error) {
+      setPublishMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Publication Instagram impossible.",
+      });
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -185,6 +230,19 @@ export default function MarketingStudio({ products }: { products: Product[] }) {
         </div>
         <label className={styles.marketingField}><span>Badge</span><input value={badge} onChange={(e) => setBadge(e.target.value)} /></label>
 
+        <label className={styles.marketingField}>
+          <span>Légende Instagram {format === "story" ? "(non utilisée pour une Story)" : ""}</span>
+          <textarea
+            className={styles.marketingCaption}
+            value={caption}
+            onChange={(e) => setCaption(e.target.value.slice(0, 2200))}
+            rows={7}
+            disabled={format === "story"}
+            placeholder="Texte de la publication, hashtags…"
+          />
+          <small className={styles.marketingCaptionCount}>{caption.length}/2200</small>
+        </label>
+
         <div className={styles.marketingSummary}>
           <span>Configuration</span>
           <strong>{themeLabels[theme]} · {format === "post" ? "Post 4:5" : "Story 9:16"} · Zoom {zoom === 0 ? "Auto" : zoom > 0 ? "+" : "−"}</strong>
@@ -194,9 +252,14 @@ export default function MarketingStudio({ products }: { products: Product[] }) {
       <section className={`${styles.card} ${styles.marketingPreviewCard}`}>
         <div className={styles.marketingPreviewTop}>
           <div><span>Aperçu final</span><strong>{themeLabels[theme]} · {format === "post" ? "Post Instagram" : "Story Instagram"}</strong></div>
-          <button className={styles.button} type="button" onClick={downloadVisual} disabled={busy}>
-            {busy ? "Génération…" : "Télécharger le PNG"}
-          </button>
+          <div className={styles.marketingPreviewActions}>
+            <button className={styles.buttonSecondary} type="button" onClick={downloadVisual} disabled={busy || publishing}>
+              {busy ? "Génération…" : "Télécharger le PNG"}
+            </button>
+            <button className={styles.button} type="button" onClick={publishToInstagram} disabled={!instagramConnected || publishing || busy}>
+              {publishing ? "Publication…" : format === "story" ? "Publier en Story" : "Publier sur Instagram"}
+            </button>
+          </div>
         </div>
         <div className={styles.marketingCanvasWrap} data-format={format}>
           {previewError ? (
@@ -216,6 +279,18 @@ export default function MarketingStudio({ products }: { products: Product[] }) {
             />
           )}
         </div>
+        {!instagramConnected ? (
+          <div className={`${styles.marketingPublishStatus} ${styles.marketingPublishWarning}`}>
+            Connectez Instagram en haut de la page pour publier directement depuis le Studio.
+          </div>
+        ) : publishMessage ? (
+          <div className={`${styles.marketingPublishStatus} ${publishMessage.kind === "success" ? styles.marketingPublishSuccess : styles.marketingPublishError}`}>
+            <span>{publishMessage.text}</span>
+            {publishMessage.kind === "success" && publishMessage.permalink ? (
+              <a href={publishMessage.permalink} target="_blank" rel="noreferrer">Voir sur Instagram ↗</a>
+            ) : null}
+          </div>
+        ) : null}
         <p className={styles.marketingHint}>
           Le visuel est généré en 1080 px, avec une hiérarchie plus nette : produit, nom, prix et informations essentielles.
         </p>

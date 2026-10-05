@@ -87,7 +87,7 @@ export default async function MarketingStudioPage() {
         </div>
       </section>
 
-      <MarketingStudio products={products} />
+      <MarketingStudio products={products} instagramConnected={instagram.connected} instagramUsername={instagram.username || "fastcash.ge"} />
     </>
   );
 }
