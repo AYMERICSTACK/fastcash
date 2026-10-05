@@ -222,7 +222,7 @@ export default async function NewProductPage() {
     revalidatePath("/sitemap.xml");
     revalidatePath(`/produits/${product.slug}`);
 
-    invalidateCatalogCache();
+    invalidateCatalogCache("admin_product_create");
 
     redirect(`/pilotage/produits/${product.id}?flash=productCreated`);
   }

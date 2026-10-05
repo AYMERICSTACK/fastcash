@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     assertValidSqlFile(upload, MAX_SQL_FILE_BYTES);
     const content = await upload.text();
     const report = await importPrestashopCategories({ content, prisma, languageId: Number.isFinite(languageIdValue) && languageIdValue > 0 ? languageIdValue : null });
-    invalidateCategoryCache();
+    invalidateCategoryCache("prestashop_categories_import");
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

@@ -734,7 +734,7 @@ export async function POST(req: Request) {
     }
 
     revalidateOrderBackOffice(persistence.order.id);
-    invalidateCatalogCache();
+    invalidateCatalogCache("stripe_webhook");
 
     const offerTokens = String(checkoutSession.metadata?.offer_tokens || "").split(",").filter(Boolean);
     if (offerTokens.length) {

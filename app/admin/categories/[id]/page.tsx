@@ -98,7 +98,7 @@ export default async function AdminCategoryDetailPage({
     const requestedSlug = normalizeSlug(slugInput || name);
 
     if (RESERVED_CATEGORY_SLUGS.has(requestedSlug)) {
-      invalidateCategoryCache();
+      invalidateCategoryCache("admin_category_update_reserved");
       redirect(`/admin/categories/${id}?flash=reserved-category`);
     }
 
@@ -127,7 +127,7 @@ export default async function AdminCategoryDetailPage({
     revalidatePath("/");
     revalidatePath(`/categories/${slug}`);
     revalidatePath("/sitemap.xml");
-    invalidateCategoryCache();
+    invalidateCategoryCache("admin_category_update");
     redirect(`/admin/categories/${id}?flash=categorySaved`);
   }
 
@@ -151,7 +151,7 @@ export default async function AdminCategoryDetailPage({
     revalidatePath("/admin/products");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
-    invalidateCategoryCache();
+    invalidateCategoryCache("admin_category_delete");
     redirect("/admin/categories?flash=categoryDeleted");
   }
 

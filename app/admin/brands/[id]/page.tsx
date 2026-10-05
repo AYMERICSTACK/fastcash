@@ -82,7 +82,7 @@ export default async function AdminBrandDetailPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
-    invalidateBrandCache();
+    invalidateBrandCache("admin_brand_update");
     redirect(`/admin/brands/${id}?flash=brandSaved`);
   }
 
@@ -103,7 +103,7 @@ export default async function AdminBrandDetailPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
-    invalidateBrandCache();
+    invalidateBrandCache("admin_brand_delete");
     redirect("/admin/brands?flash=brandDeleted");
   }
 

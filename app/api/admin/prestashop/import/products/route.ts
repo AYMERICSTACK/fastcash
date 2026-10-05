@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         Number.isFinite(languageIdValue) && languageIdValue > 0 ? languageIdValue : null,
     });
 
-    invalidateCatalogCache();
+    invalidateCatalogCache("prestashop_products_import");
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

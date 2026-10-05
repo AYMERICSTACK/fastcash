@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const content = await upload.text();
     const report = await importPrestashopBrands({ content, prisma });
 
-    invalidateBrandCache();
+    invalidateBrandCache("prestashop_brands_import");
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

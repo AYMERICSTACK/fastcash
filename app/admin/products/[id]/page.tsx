@@ -237,7 +237,7 @@ export default async function ProductDetailPage({
       revalidatePath(`/produits/${productSlug}`);
     }
 
-    invalidateCatalogCache();
+    invalidateCatalogCache("admin_product_update");
 
     redirect(`/pilotage/produits/${productId}?flash=productSaved`);
   }
@@ -290,7 +290,7 @@ export default async function ProductDetailPage({
     if (productSlug) {
       revalidatePath(`/produits/${productSlug}`);
     }
-    invalidateCatalogCache();
+    invalidateCatalogCache("admin_product_delete");
     redirect("/pilotage/produits?flash=productDeleted");
   }
 

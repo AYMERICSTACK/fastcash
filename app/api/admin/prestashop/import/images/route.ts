@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         .map((value) => Number(value.trim()))
         .filter((value) => Number.isInteger(value) && value > 0),
     });
-    invalidateCatalogCache();
+    invalidateCatalogCache("prestashop_images_import");
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

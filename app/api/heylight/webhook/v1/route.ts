@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     });
 
     if (result.changed && result.order) {
-      invalidateCatalogCache();
+      invalidateCatalogCache("heylight_webhook");
       const lines = result.order.items.map((item) => ({ name: item.name, quantity: item.quantity, amountTotal: item.price * item.quantity }));
       await Promise.allSettled([
         sendTransactionalEmail({ to: result.order.customer.email, subject: `Commande ${result.order.orderNumber} confirmée`, html: customerOrderConfirmationEmail({ reference: result.order.orderNumber, lines, total: result.order.total, currency: result.order.currency }) }),

@@ -69,7 +69,7 @@ export default async function AdminCategoriesPage({
     const requestedSlug = normalizeSlug(slugInput || name);
 
     if (RESERVED_CATEGORY_SLUGS.has(requestedSlug)) {
-      invalidateCategoryCache();
+      invalidateCategoryCache("admin_category_create_reserved");
       redirect("/admin/categories?flash=reserved-category");
     }
 
@@ -89,7 +89,7 @@ export default async function AdminCategoriesPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
-    invalidateCategoryCache();
+    invalidateCategoryCache("admin_category_create");
     redirect("/admin/categories?flash=categoryCreated");
   }
 

@@ -62,7 +62,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     await syncPrimaryImage(productId);
     await revalidateProduct(productId);
-    invalidateCatalogCache();
+    invalidateCatalogCache("admin_product_media");
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

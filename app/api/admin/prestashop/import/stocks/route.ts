@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       content: await upload.text(),
       prisma,
     });
-    invalidateCatalogCache();
+    invalidateCatalogCache("prestashop_stocks_import");
     return NextResponse.json({ ok: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";

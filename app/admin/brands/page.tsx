@@ -68,7 +68,7 @@ export default async function AdminBrandsPage({
     revalidatePath("/admin/products/new");
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
-    invalidateBrandCache();
+    invalidateBrandCache("admin_brand_create");
     redirect("/admin/brands?flash=brandCreated");
   }
 
