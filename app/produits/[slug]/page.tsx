@@ -10,7 +10,7 @@ import { getRelatedProducts } from "@/lib/related-products";
 import ProductShowroom from "@/components/ProductShowroom";
 import ProductViewTracker from "@/components/analytics/ProductViewTracker";
 
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fastcash-geneve.ch";
 

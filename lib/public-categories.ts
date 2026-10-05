@@ -511,6 +511,6 @@ export const getPublicSubcategories = unstable_cache(
 const getPublicProductBySlugPersistent = unstable_cache(
   getPublicProductBySlugUncached,
   ["getPublicProductBySlug-v2"],
-  { revalidate: 3600, tags: [CACHE_TAGS.catalog] },
+  { revalidate: 86400, tags: [CACHE_TAGS.catalog] },
 );
 export const getPublicProductBySlug = cache(getPublicProductBySlugPersistent);

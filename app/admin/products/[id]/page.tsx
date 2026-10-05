@@ -267,6 +267,7 @@ export default async function ProductDetailPage({
     if (existingProduct.slug) {
       revalidatePath(`/produits/${existingProduct.slug}`);
     }
+    invalidateCatalogCache("admin_product_visibility");
   }
 
   async function deleteProduct() {

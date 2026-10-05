@@ -12,6 +12,7 @@ import { getTrackingUrl } from "@/lib/tracking";
 import { canTransitionOrder, isWorkflowOrderStatus } from "@/lib/order-workflow";
 import { heylightFetch, getHeyLightApplicationStatus } from "@/lib/heylight";
 import { getStripeClient } from "@/lib/stripe";
+import { invalidateCatalogCache } from "@/lib/cache-invalidation";
 
 function isPickupCarrier(carrier?: string | null) {
   const normalized = (carrier || "").toLowerCase();
@@ -217,6 +218,8 @@ export async function PATCH(
           { status: 409 },
         );
       }
+
+      invalidateCatalogCache("admin_order_stock_restock");
 
       return NextResponse.json({
         message: "Retour physique confirmé. Les articles ont été réintégrés au stock.",
