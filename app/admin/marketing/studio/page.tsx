@@ -24,8 +24,8 @@ export default async function MarketingStudioPage() {
             Importez un visuel créé sur Canva, ajoutez votre légende puis publiez-le directement sur Instagram.
           </span>
         </div>
-        <Link href="/pilotage/marketing" className={styles.buttonSecondary}>
-          ← Campagnes email
+        <Link href="/pilotage" className={styles.buttonSecondary}>
+          ← Retour au Pilotage
         </Link>
       </header>
 

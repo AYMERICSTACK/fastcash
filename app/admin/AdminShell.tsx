@@ -19,7 +19,7 @@ const navItems = [
   ["Coupons", "/pilotage/coupons"],
   ["Avis clients", "/pilotage/avis"],
   ["Campagnes email", "/pilotage/marketing"],
-  ["Studio visuels", "/pilotage/marketing/studio"],
+  ["Instagram", "/pilotage/marketing/studio"],
   ["Migration Prestashop", "/pilotage/migration-prestashop"],
   ["Paramètres", "/pilotage/parametres"],
 ] as const;
