@@ -212,7 +212,7 @@ export async function getShopSettingsFresh(): Promise<ShopSettings> {
 export const getShopSettings = unstable_cache(
   getShopSettingsFresh,
   ["getShopSettings-v2"],
-  { revalidate: 900, tags: [CACHE_TAGS.settings] },
+  { revalidate: 86400, tags: [CACHE_TAGS.settings] },
 );
 
 export function buildOrderReference(settings: Pick<ShopSettings, "orderPrefix">) {

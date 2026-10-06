@@ -481,7 +481,7 @@ async function getPublicProductBySlugUncached(slug: string): Promise<Product | n
 export const getPublicCategories = unstable_cache(
   getPublicCategoriesUncached,
   ["getPublicCategories-v3"],
-  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 86400, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicCategoryBySlug = unstable_cache(
   getPublicCategoryBySlugUncached,
