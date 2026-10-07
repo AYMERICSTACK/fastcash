@@ -3,14 +3,20 @@ import { permanentRedirect } from "next/navigation";
 export const revalidate = 86400;
 
 const ROUTES: Record<string, string> = {
-  luxe: "/categories/maroquinerie",
+  luxe: "/categories/luxe",
   telephonie: "/categories/telephonie",
   informatique: "/categories/informatique",
-  "image-son": "/categories/image-son",
-  "consoles-jeux-video": "/categories/consoles",
-  "console-jeux-video": "/categories/consoles",
+  imageson: "/categories/image-et-son",
+  "image-son": "/categories/image-et-son",
+  "consoles-jeux-video": "/categories/consoles-jeux-video",
+  "console-jeux-video": "/categories/consoles-jeux-video",
   promotions: "/promotions",
-  "bonnes-affaires": "/promotions",
+  "bonnes-affaires": "/categories/bonnes-affaires",
+  maroquinerie: "/categories/maroquinerie",
+  montre: "/categories/montre",
+  "nous-contacter": "/contact",
+  magasins: "/contact",
+  "nouveaux-produits": "/",
   "2-accueil": "/",
   accueil: "/",
 };

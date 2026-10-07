@@ -9,15 +9,29 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Legacy PrestaShop product URLs are redirected at the platform layer.
+      // This avoids invoking the dynamic legacy route and, importantly, avoids
+      // any database lookup for bot/crawler traffic hitting historical URLs.
+      {
+        source: "/:legacy/:id(\\d+)-:slug.html",
+        destination: "/produits/:slug-:id",
+        permanent: true,
+      },
       { source: "/2-accueil", destination: "/", permanent: true },
       { source: "/accueil", destination: "/", permanent: true },
-      { source: "/luxe", destination: "/categories/maroquinerie", permanent: true },
+      { source: "/luxe", destination: "/categories/luxe", permanent: true },
       { source: "/telephonie", destination: "/categories/telephonie", permanent: true },
       { source: "/informatique", destination: "/categories/informatique", permanent: true },
-      { source: "/image-son", destination: "/categories/image-son", permanent: true },
-      { source: "/consoles-jeux-video", destination: "/categories/consoles", permanent: true },
-      { source: "/console-jeux-video", destination: "/categories/consoles", permanent: true },
-      { source: "/bonnes-affaires", destination: "/promotions", permanent: true },
+      { source: "/imageson", destination: "/categories/image-et-son", permanent: true },
+      { source: "/image-son", destination: "/categories/image-et-son", permanent: true },
+      { source: "/consoles-jeux-video", destination: "/categories/consoles-jeux-video", permanent: true },
+      { source: "/console-jeux-video", destination: "/categories/consoles-jeux-video", permanent: true },
+      { source: "/bonnes-affaires", destination: "/categories/bonnes-affaires", permanent: true },
+      { source: "/maroquinerie", destination: "/categories/maroquinerie", permanent: true },
+      { source: "/montre", destination: "/categories/montre", permanent: true },
+      { source: "/nous-contacter", destination: "/contact", permanent: true },
+      { source: "/magasins", destination: "/contact", permanent: true },
+      { source: "/nouveaux-produits", destination: "/", permanent: true },
     ];
   },
 

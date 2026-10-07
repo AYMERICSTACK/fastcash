@@ -1,47 +1,40 @@
-import { unstable_cache } from "next/cache";
 import { permanentRedirect } from "next/navigation";
-import { CACHE_TAGS } from "@/lib/cache-tags";
-import { prisma } from "@/lib/prisma";
-import { traceNeonRead } from "@/lib/neon-trace";
 
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 const FALLBACKS: Record<string, string> = {
-  luxe: "/categories/maroquinerie",
+  luxe: "/categories/luxe",
   telephonie: "/categories/telephonie",
   informatique: "/categories/informatique",
-  "image-son": "/categories/image-son",
-  "consoles-jeux-video": "/categories/consoles",
+  imageson: "/categories/image-et-son",
+  "image-son": "/categories/image-et-son",
+  "consoles-jeux-video": "/categories/consoles-jeux-video",
+  "console-jeux-video": "/categories/consoles-jeux-video",
   promotions: "/promotions",
-  "bonnes-affaires": "/promotions",
+  "bonnes-affaires": "/categories/bonnes-affaires",
+  maroquinerie: "/categories/maroquinerie",
+  montre: "/categories/montre",
 };
 
 type Props = {
   params: Promise<{ legacy: string; legacyProduct: string }>;
 };
 
-const getLegacyProductTarget = unstable_cache(
-  async (prestashopId: number) => {
-    const product = await traceNeonRead({ source: "getLegacyProductTarget", model: "Product", operation: "findUnique", route_type: "legacy_product_redirect", lookup_key: "prestashopId", prestashop_id: prestashopId }, () => prisma.product.findUnique({
-      where: { prestashopId },
-      select: { slug: true, active: true },
-    }));
+function legacyProductTarget(legacyProduct: string) {
+  const match = legacyProduct.match(/^(\d+)-(.+)\.html$/i);
+  if (!match) return null;
 
-    return product?.active ? `/produits/${product.slug}` : null;
-  },
-  ["legacy-product-redirect-v1"],
-  { revalidate: 3600, tags: [CACHE_TAGS.catalog] },
-);
+  const [, id, slug] = match;
+  if (!id || !slug) return null;
+
+  return `/produits/${slug}-${id}`;
+}
 
 export default async function LegacyProduct({ params }: Props) {
   const { legacy, legacyProduct } = await params;
-  const match = legacyProduct.match(/^(\d+)(?:-|\.html|$)/);
-  const prestashopId = match ? Number(match[1]) : null;
+  const target = legacyProductTarget(legacyProduct);
 
-  if (prestashopId && Number.isFinite(prestashopId)) {
-    const target = await getLegacyProductTarget(prestashopId);
-    if (target) permanentRedirect(target);
-  }
+  if (target) permanentRedirect(target);
 
   permanentRedirect(FALLBACKS[legacy] ?? "/recherche");
 }
