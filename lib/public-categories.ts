@@ -486,7 +486,7 @@ export const getPublicCategories = unstable_cache(
 export const getPublicCategoryBySlug = unstable_cache(
   getPublicCategoryBySlugUncached,
   ["getPublicCategoryBySlug-v2"],
-  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 86400, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getFeaturedPublicProducts = unstable_cache(
   getFeaturedPublicProductsUncached,
@@ -501,12 +501,12 @@ export const getDealsProducts = unstable_cache(
 export const getProductsByPublicCategory = unstable_cache(
   getProductsByPublicCategoryUncached,
   ["getProductsByPublicCategory-v2"],
-  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 86400, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 export const getPublicSubcategories = unstable_cache(
   getPublicSubcategoriesUncached,
   ["getPublicSubcategories-v1"],
-  { revalidate: 3600, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
+  { revalidate: 86400, tags: [CACHE_TAGS.catalog, CACHE_TAGS.categories] },
 );
 const getPublicProductBySlugPersistent = unstable_cache(
   getPublicProductBySlugUncached,
