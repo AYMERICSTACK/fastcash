@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
 import { toCatalogProduct } from "@/lib/public-categories";
 import { buildOrderReference, getShopSettingsFresh } from "@/lib/settings";
 import { getShippingFeeCHF, normalizeShippingMethod, resolveCoupon } from "@/lib/checkout-rules";
@@ -42,18 +42,38 @@ export async function POST(req: Request) {
 
     const rawItems = Array.isArray(body.items) ? body.items as CheckoutItem[] : [];
     const resolved = await Promise.all(rawItems.map(async (item) => {
-      const staticProduct = products.find((p) => String(p.id) === String(item.id));
-      const db = staticProduct ? null : await prisma.product.findUnique({ where: { id: String(item.id) }, include: { category: true, brand: true } });
-      const product = staticProduct ?? (db ? toCatalogProduct(db) : null);
-      return { product, qty: quantity(item.quantity), databaseId: db?.id || null };
+      const rawId = String(item.id);
+      const prestashopId = /^\d+$/.test(rawId) ? Number(rawId) : null;
+      const db = prestashopId !== null
+        ? await prisma.product.findUnique({ where: { prestashopId }, include: { category: true, brand: true } })
+        : await prisma.product.findUnique({ where: { id: rawId }, include: { category: true, brand: true } });
+      const product = db?.active ? toCatalogProduct(db) : null;
+      return { product, qty: quantity(item.quantity), databaseId: db?.active ? db.id : null };
     }));
     if (!resolved.length || resolved.some((line) => !line.product)) return NextResponse.json({ error: "Panier invalide." }, { status: 400 });
     for (const line of resolved as { product: Product; qty: number; databaseId: string | null }[]) {
+      if (line.product.price <= 0) return NextResponse.json({ error: `Prix invalide pour ${line.product.name}.` }, { status: 400 });
       if (line.product.stock < line.qty) return NextResponse.json({ error: `Stock insuffisant pour ${line.product.name}.` }, { status: 400 });
     }
 
     const lines = resolved as { product: Product; qty: number; databaseId: string | null }[];
     const subtotal = lines.reduce((sum, line) => sum + line.product.price * line.qty, 0);
+    // Verifier le total des quantites pour chaque produit Neon, pas seulement chaque ligne.
+    const quantitiesByProduct = new Map<string, { name: string; stock: number; requested: number }>();
+    for (const { product, qty, databaseId } of lines) {
+      const key = databaseId!;
+      const existing = quantitiesByProduct.get(key);
+      if (existing) {
+        existing.requested += qty;
+      } else {
+        quantitiesByProduct.set(key, { name: product.name, stock: product.stock, requested: qty });
+      }
+    }
+    for (const { name, stock, requested } of quantitiesByProduct.values()) {
+      if (requested > stock) {
+        return NextResponse.json({ error: `Stock insuffisant pour ${name}. ${stock} disponible${stock > 1 ? "s" : ""}.` }, { status: 400 });
+      }
+    }
     const shipping = getShippingFeeCHF(shippingMethod, subtotal, settings);
     const coupon = await resolveCoupon(body.couponCode, subtotal);
     const total = Math.max(0, subtotal + shipping - (coupon?.discountCHF || 0));

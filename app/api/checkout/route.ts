@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
 import { prisma } from "@/lib/prisma";
 import { toCatalogProduct } from "@/lib/public-categories";
 import { convertFromCHF, normalizeCurrency } from "@/lib/currency";
@@ -58,8 +58,7 @@ export async function POST(req: Request) {
               where: { id: rawId },
               include: { category: { select: { name: true, slug: true } }, brand: { select: { name: true, slug: true } } },
             });
-        const staticProduct = dbProduct ? null : products.find((candidate) => String(candidate.id) === rawId);
-        const product = dbProduct ? toCatalogProduct(dbProduct) : staticProduct;
+        const product = dbProduct?.active ? toCatalogProduct(dbProduct) : null;
         const quantity = sanitizeQuantity(item.quantity);
         let negotiatedPrice: number | null = null;
         let validOfferToken: string | null = null;
@@ -96,6 +95,22 @@ export async function POST(req: Request) {
     }[];
 
     if (!checkoutItems.length) return NextResponse.json({ error: "Panier vide" }, { status: 400 });
+    // Additionner les lignes partageant le meme produit Neon (y compris IDs PS et Neon melanges).
+    const quantitiesByProduct = new Map<string, { name: string; stock: number; requested: number }>();
+    for (const { product, quantity } of checkoutItems) {
+      const key = String(product.id);
+      const existing = quantitiesByProduct.get(key);
+      if (existing) {
+        existing.requested += quantity;
+      } else {
+        quantitiesByProduct.set(key, { name: product.name, stock: product.stock, requested: quantity });
+      }
+    }
+    for (const { name, stock, requested } of quantitiesByProduct.values()) {
+      if (requested > stock) {
+        return NextResponse.json({ error: `Stock insuffisant pour ${name}. ${stock} disponible${stock > 1 ? "s" : ""}.` }, { status: 400 });
+      }
+    }
 
     const subtotalCHF = checkoutItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
     const shippingFeeCHF = getShippingFeeCHF(shippingMethod, subtotalCHF, settings);

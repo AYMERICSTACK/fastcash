@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProductBySlug, products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
 import { getPublicProductBySlug } from "@/lib/public-categories";
 import { prisma } from "@/lib/prisma";
 import { traceNeonRead } from "@/lib/neon-trace";
@@ -60,14 +60,12 @@ export async function generateStaticParams() {
     where: { active: true },
     select: { slug: true },
   }));
-  const slugs = new Set([...products.map((product) => product.slug), ...dbProducts.map((product) => product.slug)]);
-
-  return Array.from(slugs).map((slug) => ({ slug }));
+  return dbProducts.map((product) => ({ slug: product.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = (await getPublicProductBySlug(slug)) ?? getProductBySlug(slug);
+  const product = await getPublicProductBySlug(slug);
 
   if (!product) {
     return {
@@ -115,7 +113,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = (await getPublicProductBySlug(slug)) ?? getProductBySlug(slug);
+  const product = await getPublicProductBySlug(slug);
 
   if (!product) {
     notFound();

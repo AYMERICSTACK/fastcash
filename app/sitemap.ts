@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { products } from "@/lib/products";
 import { getPublicCategories } from "@/lib/public-categories";
 import { prisma } from "@/lib/prisma";
 import { getPublicBrands } from "@/lib/public-brands";
@@ -68,24 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     where: { active: true },
     select: { slug: true, stock: true, updatedAt: true },
   }));
-  const dbProductSlugs = new Set(dbProducts.map((product) => product.slug));
-
-  const productRoutes: MetadataRoute.Sitemap = [
-    ...products
-      .filter((product) => !dbProductSlugs.has(product.slug))
-      .map((product) => ({
-        url: `${base}/produits/${product.slug}`,
-        lastModified: now,
-        changeFrequency: product.stock > 0 ? ("daily" as const) : ("weekly" as const),
-        priority: product.stock > 0 ? 0.8 : 0.55,
-      })),
-    ...dbProducts.map((product) => ({
-      url: `${base}/produits/${product.slug}`,
-      lastModified: product.updatedAt,
-      changeFrequency: product.stock > 0 ? ("daily" as const) : ("weekly" as const),
-      priority: product.stock > 0 ? 0.8 : 0.55,
-    })),
-  ] satisfies MetadataRoute.Sitemap;
+  const productRoutes: MetadataRoute.Sitemap = dbProducts.map((product) => ({
+    url: `${base}/produits/${product.slug}`,
+    lastModified: product.updatedAt,
+    changeFrequency: product.stock > 0 ? ("daily" as const) : ("weekly" as const),
+    priority: product.stock > 0 ? 0.8 : 0.55,
+  }));
 
   return [...staticRoutes, ...categoryRoutes, ...brandRoutes, ...productRoutes];
 }

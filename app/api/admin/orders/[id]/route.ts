@@ -9,10 +9,39 @@ import {
   sendTransactionalEmail,
 } from "@/lib/transactional-emails";
 import { getTrackingUrl } from "@/lib/tracking";
-import { canTransitionOrder, isWorkflowOrderStatus } from "@/lib/order-workflow";
+import {
+  canTransitionOrder,
+  isWorkflowOrderStatus,
+} from "@/lib/order-workflow";
 import { heylightFetch, getHeyLightApplicationStatus } from "@/lib/heylight";
 import { getStripeClient } from "@/lib/stripe";
 import { invalidateCatalogCache } from "@/lib/cache-invalidation";
+
+function isStripeStockBlocked(
+  payment:
+    | {
+        provider: string;
+        providerData: Prisma.JsonValue | null;
+      }
+    | null
+    | undefined,
+) {
+  if (!payment || payment.provider.toLowerCase() !== "stripe") return false;
+  const data = payment.providerData;
+  if (!data || Array.isArray(data) || typeof data !== "object") return false;
+  const flags = data as Record<string, unknown>;
+  return flags.stockConflict === true || flags.stockDebited === false;
+}
+
+function blockedStockResponse() {
+  return NextResponse.json(
+    {
+      error:
+        "Commande Stripe en attente de vérification du stock. Préparation, retrait et expédition bloqués.",
+    },
+    { status: 409 },
+  );
+}
 
 function isPickupCarrier(carrier?: string | null) {
   const normalized = (carrier || "").toLowerCase();
@@ -35,18 +64,38 @@ export async function PATCH(
 
   try {
     if (action === "stripe_status") {
-      const existing = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
-      if (!existing?.payment || existing.payment.provider.toLowerCase() !== "stripe" || !existing.payment.reference) {
-        return NextResponse.json({ error: "Aucun paiement Stripe associé." }, { status: 400 });
+      const existing = await prisma.order.findUnique({
+        where: { id },
+        include: { payment: true },
+      });
+      if (
+        !existing?.payment ||
+        existing.payment.provider.toLowerCase() !== "stripe" ||
+        !existing.payment.reference
+      ) {
+        return NextResponse.json(
+          { error: "Aucun paiement Stripe associé." },
+          { status: 400 },
+        );
       }
 
       const stripe = getStripeClient();
-      const intent = await stripe.paymentIntents.retrieve(existing.payment.reference, {
-        expand: ["latest_charge"],
-      });
-      const charge = intent.latest_charge && typeof intent.latest_charge !== "string" ? intent.latest_charge : null;
-      const refundedAmount = charge ? charge.amount_refunded / 100 : existing.payment.refundedAmount;
-      const fullyRefunded = Boolean(charge?.refunded) || refundedAmount >= existing.payment.amount - 0.005;
+      const intent = await stripe.paymentIntents.retrieve(
+        existing.payment.reference,
+        {
+          expand: ["latest_charge"],
+        },
+      );
+      const charge =
+        intent.latest_charge && typeof intent.latest_charge !== "string"
+          ? intent.latest_charge
+          : null;
+      const refundedAmount = charge
+        ? charge.amount_refunded / 100
+        : existing.payment.refundedAmount;
+      const fullyRefunded =
+        Boolean(charge?.refunded) ||
+        refundedAmount >= existing.payment.amount - 0.005;
       const localStatus = fullyRefunded
         ? "refunded"
         : refundedAmount > 0.005
@@ -54,9 +103,12 @@ export async function PATCH(
           : intent.status === "succeeded"
             ? "paid"
             : intent.status;
-      const previousData = existing.payment.providerData && !Array.isArray(existing.payment.providerData) && typeof existing.payment.providerData === "object"
-        ? existing.payment.providerData as Record<string, unknown>
-        : {};
+      const previousData =
+        existing.payment.providerData &&
+        !Array.isArray(existing.payment.providerData) &&
+        typeof existing.payment.providerData === "object"
+          ? (existing.payment.providerData as Record<string, unknown>)
+          : {};
 
       await prisma.$transaction([
         prisma.payment.update({
@@ -64,7 +116,11 @@ export async function PATCH(
           data: {
             status: localStatus,
             refundedAmount,
-            confirmedAt: intent.status === "succeeded" ? existing.payment.confirmedAt ?? new Date(intent.created * 1000) : existing.payment.confirmedAt,
+            confirmedAt:
+              intent.status === "succeeded"
+                ? (existing.payment.confirmedAt ??
+                  new Date(intent.created * 1000))
+                : existing.payment.confirmedAt,
             providerData: {
               ...previousData,
               paymentIntentId: intent.id,
@@ -81,31 +137,67 @@ export async function PATCH(
           },
         }),
         ...(fullyRefunded && existing.status !== "REFUNDED"
-          ? [prisma.order.update({ where: { id }, data: { status: "REFUNDED" } })]
+          ? [
+              prisma.order.update({
+                where: { id },
+                data: { status: "REFUNDED" },
+              }),
+            ]
           : []),
       ]);
 
-      return NextResponse.json({ message: `Statut Stripe actualisé : ${localStatus}.` });
+      return NextResponse.json({
+        message: `Statut Stripe actualisé : ${localStatus}.`,
+      });
     }
 
     if (action === "stripe_refund") {
-      const existing = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
-      if (!existing?.payment || existing.payment.provider.toLowerCase() !== "stripe" || !existing.payment.reference) {
-        return NextResponse.json({ error: "Aucun paiement Stripe associé." }, { status: 400 });
+      const existing = await prisma.order.findUnique({
+        where: { id },
+        include: { payment: true },
+      });
+      if (
+        !existing?.payment ||
+        existing.payment.provider.toLowerCase() !== "stripe" ||
+        !existing.payment.reference
+      ) {
+        return NextResponse.json(
+          { error: "Aucun paiement Stripe associé." },
+          { status: 400 },
+        );
       }
       if (!["paid", "partially_refunded"].includes(existing.payment.status)) {
-        return NextResponse.json({ error: `Le paiement Stripe n'est pas remboursable dans l'état « ${existing.payment.status} ».` }, { status: 409 });
+        return NextResponse.json(
+          {
+            error: `Le paiement Stripe n'est pas remboursable dans l'état « ${existing.payment.status} ».`,
+          },
+          { status: 409 },
+        );
       }
 
-      const remaining = Math.max(0, existing.payment.amount - existing.payment.refundedAmount);
+      const remaining = Math.max(
+        0,
+        existing.payment.amount - existing.payment.refundedAmount,
+      );
       const requested = Number(body.amount ?? remaining);
-      if (!Number.isFinite(requested) || requested <= 0 || requested > remaining + 0.005) {
-        return NextResponse.json({ error: `Montant invalide. Maximum remboursable : ${remaining.toFixed(2)} ${existing.currency}.` }, { status: 400 });
+      if (
+        !Number.isFinite(requested) ||
+        requested <= 0 ||
+        requested > remaining + 0.005
+      ) {
+        return NextResponse.json(
+          {
+            error: `Montant invalide. Maximum remboursable : ${remaining.toFixed(2)} ${existing.currency}.`,
+          },
+          { status: 400 },
+        );
       }
 
       const stripe = getStripeClient();
       const requestedMinor = Math.round(requested * 100);
-      const refundedBeforeMinor = Math.round(existing.payment.refundedAmount * 100);
+      const refundedBeforeMinor = Math.round(
+        existing.payment.refundedAmount * 100,
+      );
       const refund = await stripe.refunds.create(
         {
           payment_intent: existing.payment.reference,
@@ -115,20 +207,36 @@ export async function PATCH(
             fastcash_order_number: existing.orderNumber,
           },
         },
-        { idempotencyKey: `fastcash-refund-${existing.payment.id}-${refundedBeforeMinor}-${requestedMinor}` },
+        {
+          idempotencyKey: `fastcash-refund-${existing.payment.id}-${refundedBeforeMinor}-${requestedMinor}`,
+        },
       );
 
-      const intent = await stripe.paymentIntents.retrieve(existing.payment.reference, {
-        expand: ["latest_charge"],
-      });
-      const charge = intent.latest_charge && typeof intent.latest_charge !== "string" ? intent.latest_charge : null;
+      const intent = await stripe.paymentIntents.retrieve(
+        existing.payment.reference,
+        {
+          expand: ["latest_charge"],
+        },
+      );
+      const charge =
+        intent.latest_charge && typeof intent.latest_charge !== "string"
+          ? intent.latest_charge
+          : null;
       const refundedAmount = charge
         ? charge.amount_refunded / 100
-        : Math.min(existing.payment.amount, existing.payment.refundedAmount + requested);
-      const fullyRefunded = Boolean(charge?.refunded) || refundedAmount >= existing.payment.amount - 0.005;
-      const previousData = existing.payment.providerData && !Array.isArray(existing.payment.providerData) && typeof existing.payment.providerData === "object"
-        ? existing.payment.providerData as Record<string, unknown>
-        : {};
+        : Math.min(
+            existing.payment.amount,
+            existing.payment.refundedAmount + requested,
+          );
+      const fullyRefunded =
+        Boolean(charge?.refunded) ||
+        refundedAmount >= existing.payment.amount - 0.005;
+      const previousData =
+        existing.payment.providerData &&
+        !Array.isArray(existing.payment.providerData) &&
+        typeof existing.payment.providerData === "object"
+          ? (existing.payment.providerData as Record<string, unknown>)
+          : {};
 
       await prisma.$transaction([
         prisma.payment.update({
@@ -147,7 +255,12 @@ export async function PATCH(
           },
         }),
         ...(fullyRefunded && existing.status !== "REFUNDED"
-          ? [prisma.order.update({ where: { id }, data: { status: "REFUNDED" } })]
+          ? [
+              prisma.order.update({
+                where: { id },
+                data: { status: "REFUNDED" },
+              }),
+            ]
           : []),
       ]);
 
@@ -163,22 +276,47 @@ export async function PATCH(
       });
 
       if (!existing?.payment) {
-        return NextResponse.json({ error: "Aucun paiement associé à cette commande." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Aucun paiement associé à cette commande." },
+          { status: 400 },
+        );
       }
 
-      const fullyRefunded = existing.payment.status === "refunded"
-        || existing.payment.refundedAmount >= existing.payment.amount - 0.005;
-      if (!fullyRefunded) {
+      if (isStripeStockBlocked(existing.payment)) {
         return NextResponse.json(
-          { error: "Le retour en stock n'est disponible qu'après remboursement total de la commande." },
+          {
+            error:
+              "Aucun stock n'a été débité pour cette commande Stripe : réintégration interdite.",
+          },
           { status: 409 },
         );
       }
 
-      const productItems = existing.items.filter((item) => item.productId && item.quantity > 0);
-      if (!productItems.length || productItems.length !== existing.items.length) {
+      const fullyRefunded =
+        existing.payment.status === "refunded" ||
+        existing.payment.refundedAmount >= existing.payment.amount - 0.005;
+      if (!fullyRefunded) {
         return NextResponse.json(
-          { error: "Une ou plusieurs lignes de cette commande ne sont pas reliées à un produit. Réintégration automatique impossible." },
+          {
+            error:
+              "Le retour en stock n'est disponible qu'après remboursement total de la commande.",
+          },
+          { status: 409 },
+        );
+      }
+
+      const productItems = existing.items.filter(
+        (item) => item.productId && item.quantity > 0,
+      );
+      if (
+        !productItems.length ||
+        productItems.length !== existing.items.length
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Une ou plusieurs lignes de cette commande ne sont pas reliées à un produit. Réintégration automatique impossible.",
+          },
           { status: 409 },
         );
       }
@@ -197,6 +335,13 @@ export async function PATCH(
               )
             WHERE "id" = ${existing.payment!.id}
               AND COALESCE("providerData"->>'stockRestockedAt', '') = ''
+              AND NOT (
+                "provider" = 'Stripe'
+                AND (
+                  COALESCE("providerData"->>'stockConflict', 'false') = 'true'
+                  OR COALESCE("providerData"->>'stockDebited', 'true') = 'false'
+                )
+              )
           `,
         );
 
@@ -222,76 +367,192 @@ export async function PATCH(
       invalidateCatalogCache("admin_order_stock_restock");
 
       return NextResponse.json({
-        message: "Retour physique confirmé. Les articles ont été réintégrés au stock.",
+        message:
+          "Retour physique confirmé. Les articles ont été réintégrés au stock.",
         restockedAt: restockedAt.toISOString(),
       });
     }
 
     if (action === "heylight_status") {
-      const existing = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
-      if (!existing?.payment || existing.payment.provider !== "HeyLight" || !existing.payment.reference) {
-        return NextResponse.json({ error: "Aucun contrat HeyLight associé." }, { status: 400 });
+      const existing = await prisma.order.findUnique({
+        where: { id },
+        include: { payment: true },
+      });
+      if (
+        !existing?.payment ||
+        existing.payment.provider !== "HeyLight" ||
+        !existing.payment.reference
+      ) {
+        return NextResponse.json(
+          { error: "Aucun contrat HeyLight associé." },
+          { status: 400 },
+        );
       }
-      const providerStatus = await getHeyLightApplicationStatus(existing.payment.reference);
-      await prisma.payment.update({ where: { id: existing.payment.id }, data: { providerData: providerStatus as never } });
-      return NextResponse.json({ message: "Statut HeyLight actualisé.", providerStatus });
+      const providerStatus = await getHeyLightApplicationStatus(
+        existing.payment.reference,
+      );
+      await prisma.payment.update({
+        where: { id: existing.payment.id },
+        data: { providerData: providerStatus as never },
+      });
+      return NextResponse.json({
+        message: "Statut HeyLight actualisé.",
+        providerStatus,
+      });
     }
 
     if (action === "heylight_confirm_delivery") {
-      const existing = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
-      if (!existing?.payment || existing.payment.provider !== "HeyLight" || !existing.payment.reference) {
-        return NextResponse.json({ error: "Aucun contrat HeyLight associé." }, { status: 400 });
+      const existing = await prisma.order.findUnique({
+        where: { id },
+        include: { payment: true },
+      });
+      if (
+        !existing?.payment ||
+        existing.payment.provider !== "HeyLight" ||
+        !existing.payment.reference
+      ) {
+        return NextResponse.json(
+          { error: "Aucun contrat HeyLight associé." },
+          { status: 400 },
+        );
       }
-      if (!["SHIPPED", "DELIVERED", "READY_FOR_PICKUP"].includes(existing.status)) {
-        return NextResponse.json({ error: "La commande doit être expédiée, livrée ou prête au retrait." }, { status: 409 });
+      if (
+        !["SHIPPED", "DELIVERED", "READY_FOR_PICKUP"].includes(existing.status)
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "La commande doit être expédiée, livrée ou prête au retrait.",
+          },
+          { status: 409 },
+        );
       }
-      const response = await heylightFetch<unknown>("/api/checkout/v1/confirm/", { method: "POST", body: JSON.stringify({ external_uuid: existing.payment.reference }) });
-      await prisma.payment.update({ where: { id: existing.payment.id }, data: { deliveredAt: new Date(), providerData: response as never } });
-      return NextResponse.json({ message: "Livraison confirmée auprès de HeyLight." });
+      const response = await heylightFetch<unknown>(
+        "/api/checkout/v1/confirm/",
+        {
+          method: "POST",
+          body: JSON.stringify({ external_uuid: existing.payment.reference }),
+        },
+      );
+      await prisma.payment.update({
+        where: { id: existing.payment.id },
+        data: { deliveredAt: new Date(), providerData: response as never },
+      });
+      return NextResponse.json({
+        message: "Livraison confirmée auprès de HeyLight.",
+      });
     }
 
     if (action === "heylight_refund") {
-      const existing = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
-      if (!existing?.payment || existing.payment.provider !== "HeyLight" || !existing.payment.reference) {
-        return NextResponse.json({ error: "Aucun contrat HeyLight associé." }, { status: 400 });
+      const existing = await prisma.order.findUnique({
+        where: { id },
+        include: { payment: true },
+      });
+      if (
+        !existing?.payment ||
+        existing.payment.provider !== "HeyLight" ||
+        !existing.payment.reference
+      ) {
+        return NextResponse.json(
+          { error: "Aucun contrat HeyLight associé." },
+          { status: 400 },
+        );
       }
-      const remaining = Math.max(0, existing.payment.amount - existing.payment.refundedAmount);
+      const remaining = Math.max(
+        0,
+        existing.payment.amount - existing.payment.refundedAmount,
+      );
       const requested = Number(body.amount || remaining);
-      if (!Number.isFinite(requested) || requested <= 0 || requested > remaining) {
-        return NextResponse.json({ error: `Montant invalide. Maximum remboursable : ${remaining.toFixed(2)} CHF.` }, { status: 400 });
+      if (
+        !Number.isFinite(requested) ||
+        requested <= 0 ||
+        requested > remaining
+      ) {
+        return NextResponse.json(
+          {
+            error: `Montant invalide. Maximum remboursable : ${remaining.toFixed(2)} CHF.`,
+          },
+          { status: 400 },
+        );
       }
-      const response = await heylightFetch<unknown>("/api/checkout/v1/refund/", { method: "POST", body: JSON.stringify({ external_uuid: existing.payment.reference, amount: requested.toFixed(2), amount_format: "DECIMAL", external_reference: `REF-${existing.orderNumber}-${Date.now()}`, currency: existing.currency || "CHF" }) });
+      const response = await heylightFetch<unknown>(
+        "/api/checkout/v1/refund/",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            external_uuid: existing.payment.reference,
+            amount: requested.toFixed(2),
+            amount_format: "DECIMAL",
+            external_reference: `REF-${existing.orderNumber}-${Date.now()}`,
+            currency: existing.currency || "CHF",
+          }),
+        },
+      );
       const refundedAmount = existing.payment.refundedAmount + requested;
       await prisma.$transaction([
-        prisma.payment.update({ where: { id: existing.payment.id }, data: { refundedAmount, status: refundedAmount >= existing.payment.amount ? "refunded" : "partially_refunded", providerData: response as never } }),
-        ...(refundedAmount >= existing.payment.amount ? [prisma.order.update({ where: { id }, data: { status: "REFUNDED" } })] : []),
+        prisma.payment.update({
+          where: { id: existing.payment.id },
+          data: {
+            refundedAmount,
+            status:
+              refundedAmount >= existing.payment.amount
+                ? "refunded"
+                : "partially_refunded",
+            providerData: response as never,
+          },
+        }),
+        ...(refundedAmount >= existing.payment.amount
+          ? [
+              prisma.order.update({
+                where: { id },
+                data: { status: "REFUNDED" },
+              }),
+            ]
+          : []),
       ]);
-      return NextResponse.json({ message: `Remboursement HeyLight de ${requested.toFixed(2)} CHF enregistré.` });
+      return NextResponse.json({
+        message: `Remboursement HeyLight de ${requested.toFixed(2)} CHF enregistré.`,
+      });
     }
 
     if (action === "mark_shipped") {
       const existing = await prisma.order.findUnique({
         where: { id },
-        include: { customer: true, shipment: true },
+        include: { customer: true, shipment: true, payment: true },
       });
 
       if (!existing) {
-        return NextResponse.json({ error: "Order not found." }, { status: 404 });
+        return NextResponse.json(
+          { error: "Order not found." },
+          { status: 404 },
+        );
       }
+
+      if (isStripeStockBlocked(existing.payment)) return blockedStockResponse();
 
       if (isPickupCarrier(existing.shipment?.carrier)) {
         return NextResponse.json(
-          { error: "Une commande en retrait boutique ne peut pas être marquée comme expédiée." },
+          {
+            error:
+              "Une commande en retrait boutique ne peut pas être marquée comme expédiée.",
+          },
           { status: 400 },
         );
       }
 
-      const carrier = String(body.carrier ?? existing.shipment?.carrier ?? "").trim();
-      const trackingNo = String(body.trackingNo ?? existing.shipment?.trackingNo ?? "").trim();
+      const carrier = String(
+        body.carrier ?? existing.shipment?.carrier ?? "",
+      ).trim();
+      const trackingNo = String(
+        body.trackingNo ?? existing.shipment?.trackingNo ?? "",
+      ).trim();
 
       if (!carrier || !trackingNo) {
         return NextResponse.json(
-          { error: "Renseignez le transporteur et le numéro de suivi avant l'expédition." },
+          {
+            error:
+              "Renseignez le transporteur et le numéro de suivi avant l'expédition.",
+          },
           { status: 400 },
         );
       }
@@ -299,7 +560,10 @@ export async function PATCH(
       const alreadySent = Boolean(existing.shipment?.shippedEmailSentAt);
       if (!alreadySent && !process.env.RESEND_API_KEY) {
         return NextResponse.json(
-          { error: "Le service email n'est pas configuré. La commande n'a pas été modifiée." },
+          {
+            error:
+              "Le service email n'est pas configuré. La commande n'a pas été modifiée.",
+          },
           { status: 503 },
         );
       }
@@ -310,12 +574,21 @@ export async function PATCH(
         await tx.shipment.upsert({
           where: { orderId: id },
           update: { carrier, trackingNo, status: "SHIPPED", shippedAt },
-          create: { orderId: id, carrier, trackingNo, status: "SHIPPED", shippedAt },
+          create: {
+            orderId: id,
+            carrier,
+            trackingNo,
+            status: "SHIPPED",
+            shippedAt,
+          },
         });
       });
 
       if (!alreadySent) {
-        const customerName = [existing.customer.firstName, existing.customer.lastName]
+        const customerName = [
+          existing.customer.firstName,
+          existing.customer.lastName,
+        ]
           .filter(Boolean)
           .join(" ")
           .trim();
@@ -349,16 +622,24 @@ export async function PATCH(
     if (action === "ready_for_pickup") {
       const existing = await prisma.order.findUnique({
         where: { id },
-        include: { customer: true, shipment: true },
+        include: { customer: true, shipment: true, payment: true },
       });
 
       if (!existing) {
-        return NextResponse.json({ error: "Order not found." }, { status: 404 });
+        return NextResponse.json(
+          { error: "Order not found." },
+          { status: 404 },
+        );
       }
+
+      if (isStripeStockBlocked(existing.payment)) return blockedStockResponse();
 
       if (!isPickupCarrier(existing.shipment?.carrier)) {
         return NextResponse.json(
-          { error: "Cette action est réservée aux commandes en retrait boutique." },
+          {
+            error:
+              "Cette action est réservée aux commandes en retrait boutique.",
+          },
           { status: 400 },
         );
       }
@@ -367,7 +648,10 @@ export async function PATCH(
 
       if (!alreadySent && !process.env.RESEND_API_KEY) {
         return NextResponse.json(
-          { error: "Le service email n'est pas configuré. La commande n'a pas été modifiée." },
+          {
+            error:
+              "Le service email n'est pas configuré. La commande n'a pas été modifiée.",
+          },
           { status: 503 },
         );
       }
@@ -396,7 +680,10 @@ export async function PATCH(
       });
 
       if (!alreadySent) {
-        const customerName = [existing.customer.firstName, existing.customer.lastName]
+        const customerName = [
+          existing.customer.firstName,
+          existing.customer.lastName,
+        ]
           .filter(Boolean)
           .join(" ")
           .trim();
@@ -427,30 +714,67 @@ export async function PATCH(
     }
 
     const status = String(body.status ?? "");
-    const shipmentStatus = String(body.shipmentStatus ?? status);
+    let shipmentStatus = String(body.shipmentStatus ?? status);
     const trackingNo = body.trackingNo ? String(body.trackingNo).trim() : null;
     const carrier = body.carrier ? String(body.carrier).trim() : null;
 
-    if (!isWorkflowOrderStatus(status) || !isWorkflowOrderStatus(shipmentStatus)) {
-      return NextResponse.json({ error: "Statut de commande invalide." }, { status: 400 });
+    if (
+      !isWorkflowOrderStatus(status) ||
+      !isWorkflowOrderStatus(shipmentStatus)
+    ) {
+      return NextResponse.json(
+        { error: "Statut de commande invalide." },
+        { status: 400 },
+      );
     }
 
-    const existing = await prisma.order.findUnique({ where: { id }, include: { customer: true, shipment: true } });
-    if (!existing) return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
+    const existing = await prisma.order.findUnique({
+      where: { id },
+      include: { customer: true, shipment: true, payment: true },
+    });
+    if (!existing)
+      return NextResponse.json(
+        { error: "Commande introuvable." },
+        { status: 404 },
+      );
 
+    if (isStripeStockBlocked(existing.payment)) {
+      if (status === "CANCELLED" || status === "REFUNDED") {
+        shipmentStatus = status;
+      }
+
+      const safeStatuses = new Set(["PENDING", "CANCELLED", "REFUNDED"]);
+      if (!safeStatuses.has(status) || !safeStatuses.has(shipmentStatus)) {
+        return blockedStockResponse();
+      }
+    }
     if (!canTransitionOrder(existing.status, status)) {
       return NextResponse.json(
-        { error: "Cette transition de statut n’est pas autorisée depuis l’état actuel de la commande." },
+        {
+          error:
+            "Cette transition de statut n’est pas autorisée depuis l’état actuel de la commande.",
+        },
         { status: 409 },
       );
     }
 
     const pickup = isPickupCarrier(carrier || existing.shipment?.carrier);
     if (status === "READY_FOR_PICKUP" && !pickup) {
-      return NextResponse.json({ error: "Le statut prêt au retrait est réservé aux commandes en retrait boutique." }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Le statut prêt au retrait est réservé aux commandes en retrait boutique.",
+        },
+        { status: 400 },
+      );
     }
     if (status === "SHIPPED" && (pickup || !carrier || !trackingNo)) {
-      return NextResponse.json({ error: "Une expédition exige un transporteur et un numéro de suivi." }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Une expédition exige un transporteur et un numéro de suivi.",
+        },
+        { status: 400 },
+      );
     }
 
     const order = await prisma.$transaction(async (tx) => {
@@ -469,10 +793,21 @@ export async function PATCH(
     });
 
     let emailWarning: string | undefined;
-    const emailableStatuses = new Set(["PREPARING", "DELIVERED", "CANCELLED", "REFUNDED"]);
+    const emailableStatuses = new Set([
+      "PREPARING",
+      "DELIVERED",
+      "CANCELLED",
+      "REFUNDED",
+    ]);
     if (existing.status !== status && emailableStatuses.has(status)) {
       try {
-        const customerName = [existing.customer.firstName, existing.customer.lastName].filter(Boolean).join(" ").trim();
+        const customerName = [
+          existing.customer.firstName,
+          existing.customer.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
         const labels: Record<string, string> = {
           PREPARING: `Votre commande ${existing.orderNumber} est en préparation`,
           DELIVERED: `Votre commande ${existing.orderNumber} a été livrée`,
@@ -485,22 +820,33 @@ export async function PATCH(
           html: customerOrderStatusEmail({
             name: customerName || null,
             reference: existing.orderNumber,
-            status: status as "PREPARING" | "DELIVERED" | "CANCELLED" | "REFUNDED",
+            status: status as
+              | "PREPARING"
+              | "DELIVERED"
+              | "CANCELLED"
+              | "REFUNDED",
           }),
         });
       } catch (emailError) {
         console.error("FAST CASH order status email failed", emailError);
-        emailWarning = "Statut enregistré, mais l'email client n'a pas pu être envoyé.";
+        emailWarning =
+          "Statut enregistré, mais l'email client n'a pas pu être envoyé.";
       }
     }
 
     return NextResponse.json({ order, emailWarning });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
 
     console.error("FAST CASH order update failed", error);
-    return NextResponse.json({ error: "Unable to update order." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to update order." },
+      { status: 500 },
+    );
   }
 }

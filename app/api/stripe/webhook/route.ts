@@ -4,11 +4,20 @@ import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import { formatCHF } from "@/lib/format";
-import { convertFromCHF, normalizeCurrency, type Currency } from "@/lib/currency";
+import {
+  convertFromCHF,
+  normalizeCurrency,
+  type Currency,
+} from "@/lib/currency";
 import { products, type Product } from "@/lib/products";
 import { prisma } from "@/lib/prisma";
 import { toCatalogProduct } from "@/lib/public-categories";
-import { buildInvoiceNumber, buildOrderReference, getShopSettingsFresh, type ShopSettings } from "@/lib/settings";
+import {
+  buildInvoiceNumber,
+  buildOrderReference,
+  getShopSettingsFresh,
+  type ShopSettings,
+} from "@/lib/settings";
 import { getStripeClient, getStripeConfig } from "@/lib/stripe";
 import {
   adminNewOrderEmail,
@@ -65,33 +74,51 @@ async function resolveMetadataItems(value?: string | null) {
     entries.map(async ({ id, quantity }) => {
       const rawId = String(id);
       const prestashopId = /^\d+$/.test(rawId) ? Number(rawId) : null;
-      const dbProduct = prestashopId !== null
-        ? await prisma.product.findUnique({
-            where: { prestashopId },
-            include: {
-              category: { select: { name: true, slug: true } },
-              brand: { select: { name: true, slug: true } },
-            },
-          })
-        : await prisma.product.findUnique({
-            where: { id: rawId },
-            include: {
-              category: { select: { name: true, slug: true } },
-              brand: { select: { name: true, slug: true } },
-            },
-          });
+      const dbProduct =
+        prestashopId !== null
+          ? await prisma.product.findUnique({
+              where: { prestashopId },
+              include: {
+                category: { select: { name: true, slug: true } },
+                brand: { select: { name: true, slug: true } },
+              },
+            })
+          : await prisma.product.findUnique({
+              where: { id: rawId },
+              include: {
+                category: { select: { name: true, slug: true } },
+                brand: { select: { name: true, slug: true } },
+              },
+            });
 
       if (dbProduct) {
-        return { product: toCatalogProduct(dbProduct), quantity, databaseId: dbProduct.id };
+        return {
+          product: toCatalogProduct(dbProduct),
+          quantity,
+          databaseId: dbProduct.id,
+        };
       }
 
-      // Compatibilité avec les rares produits encore uniquement présents dans le catalogue statique.
-      // Ils restent achetables, mais aucun stock DB ne peut être décrémenté tant qu'ils ne sont pas importés.
-      const staticProduct = products.find((candidate) => String(candidate.id) === rawId);
+      // Compatibilité des anciennes sessions Stripe uniquement.
+      // Ces produits ne doivent jamais déclencher une préparation automatique.
+      const staticProduct = products.find(
+        (candidate) => String(candidate.id) === rawId,
+      );
       if (!staticProduct) return null;
-      return { product: staticProduct, quantity, databaseId: null as string | null };
+      return {
+        product: staticProduct,
+        quantity,
+        databaseId: null as string | null,
+      };
     }),
-  ).then((items) => items.filter(Boolean) as { product: Product; quantity: number; databaseId: string | null }[]);
+  ).then(
+    (items) =>
+      items.filter(Boolean) as {
+        product: Product;
+        quantity: number;
+        databaseId: string | null;
+      }[],
+  );
 }
 
 type CheckoutAddress = {
@@ -102,9 +129,13 @@ type CheckoutAddress = {
   country: string;
 };
 
-function getCheckoutAddress(session: Stripe.Checkout.Session): CheckoutAddress | null {
+function getCheckoutAddress(
+  session: Stripe.Checkout.Session,
+): CheckoutAddress | null {
   const rawSession = session as Stripe.Checkout.Session & {
-    collected_information?: { shipping_details?: { address?: Stripe.Address | null } | null } | null;
+    collected_information?: {
+      shipping_details?: { address?: Stripe.Address | null } | null;
+    } | null;
     shipping_details?: { address?: Stripe.Address | null } | null;
   };
 
@@ -132,7 +163,9 @@ function formatCheckoutAddress(address: CheckoutAddress | null) {
     [address.line1, address.line2].filter(Boolean).join(", "),
     [address.postalCode, address.city].filter(Boolean).join(" "),
     address.country,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function splitCustomerName(fullName: string) {
@@ -176,18 +209,24 @@ async function persistStripeOrder({
     include: { invoice: true, payment: true },
   });
 
-  if (existingOrder) return { order: existingOrder, created: false };
+  if (existingOrder)
+    return { order: existingOrder, created: false, stockConflict: false };
 
   const metadataItems = await resolveMetadataItems(session.metadata?.items);
   const { firstName, lastName } = splitCustomerName(customerName);
   const safeEmail = customerEmail || `${session.id}@stripe.fastcash.local`;
   const invoiceNumber = buildInvoiceNumber(reference, settings);
-  const checkoutAddress = session.metadata?.shipping_method === "shipping" ? getCheckoutAddress(session) : null;
+  const checkoutAddress =
+    session.metadata?.shipping_method === "shipping"
+      ? getCheckoutAddress(session)
+      : null;
 
   const orderItems = metadataItems.length
     ? metadataItems.map(({ product, quantity, databaseId }, index) => {
         const stripeLine = stripeLines.data[index];
-        const amountTotal = stripeLine?.amount_total ? stripeLine.amount_total / 100 : convertFromCHF(product.price, currency) * quantity;
+        const amountTotal = stripeLine?.amount_total
+          ? stripeLine.amount_total / 100
+          : convertFromCHF(product.price, currency) * quantity;
 
         return {
           productId: databaseId,
@@ -200,104 +239,150 @@ async function persistStripeOrder({
         productId: null,
         name: line.description || "Produit FAST CASH",
         quantity: line.quantity || 1,
-        price: line.quantity ? (line.amount_total || 0) / 100 / line.quantity : (line.amount_total || 0) / 100,
+        price: line.quantity
+          ? (line.amount_total || 0) / 100 / line.quantity
+          : (line.amount_total || 0) / 100,
       }));
 
-  return prisma.$transaction(async (tx: any) => {
-    const customer = await tx.customer.upsert({
-      where: { email: safeEmail },
-      update: {
-        firstName,
-        lastName,
-        phone: customerPhone !== "Non renseigné" ? customerPhone : undefined,
-      },
-      create: {
-        email: safeEmail,
-        firstName,
-        lastName,
-        phone: customerPhone !== "Non renseigné" ? customerPhone : null,
-      },
-    });
-
-    if (checkoutAddress) {
-      await tx.address.create({
-        data: {
-          customerId: customer.id,
-          label: `Commande ${reference}`,
-          line1: checkoutAddress.line1,
-          line2: checkoutAddress.line2,
-          postalCode: checkoutAddress.postalCode,
-          city: checkoutAddress.city,
-          country: checkoutAddress.country,
+  const unresolved =
+    orderItems.length === 0 || orderItems.some((item) => !item.productId);
+  const persist = (blocked: boolean, reason: string | null) =>
+    prisma.$transaction(async (tx: any) => {
+      const customer = await tx.customer.upsert({
+        where: { email: safeEmail },
+        update: {
+          firstName,
+          lastName,
+          phone: customerPhone !== "Non renseigné" ? customerPhone : undefined,
+        },
+        create: {
+          email: safeEmail,
+          firstName,
+          lastName,
+          phone: customerPhone !== "Non renseigné" ? customerPhone : null,
         },
       });
-    }
 
-    const order = await tx.order.create({
-      data: {
-        orderNumber: reference,
-        customerId: customer.id,
-        total,
-        currency: currency.toUpperCase(),
-        status: "PREPARING",
-        items: {
-          create: orderItems,
-        },
-        payment: {
-          create: {
-            provider: "Stripe",
-            status: "paid",
-            amount: total,
-            reference: session.payment_intent ? String(session.payment_intent) : session.id,
-            confirmedAt: new Date(),
-            providerData: {
-              checkoutSessionId: session.id,
-              paymentIntentId: session.payment_intent ? String(session.payment_intent) : null,
-              latestEventId: event.id,
-              latestEventType: event.type,
-              checkoutStatus: session.status || null,
-              paymentStatus: session.payment_status || null,
+      if (checkoutAddress) {
+        await tx.address.create({
+          data: {
+            customerId: customer.id,
+            label: `Commande ${reference}`,
+            line1: checkoutAddress.line1,
+            line2: checkoutAddress.line2,
+            postalCode: checkoutAddress.postalCode,
+            city: checkoutAddress.city,
+            country: checkoutAddress.country,
+          },
+        });
+      }
+
+      const order = await tx.order.create({
+        data: {
+          orderNumber: reference,
+          customerId: customer.id,
+          total,
+          currency: currency.toUpperCase(),
+          status: blocked ? "PENDING" : "PREPARING",
+          items: {
+            create: orderItems,
+          },
+          payment: {
+            create: {
+              provider: "Stripe",
+              status: "paid",
+              amount: total,
+              reference: session.payment_intent
+                ? String(session.payment_intent)
+                : session.id,
+              confirmedAt: new Date(),
+              providerData: {
+                checkoutSessionId: session.id,
+                paymentIntentId: session.payment_intent
+                  ? String(session.payment_intent)
+                  : null,
+                latestEventId: event.id,
+                latestEventType: event.type,
+                checkoutStatus: session.status || null,
+                paymentStatus: session.payment_status || null,
+                stockDebited: !blocked,
+                stockConflict: blocked,
+                stockConflictReason: reason,
+              },
+            },
+          },
+          shipment: {
+            create: {
+              carrier:
+                session.metadata?.shipping_label || settings.defaultCarrier,
+              trackingNo: null,
+              status: blocked ? "PENDING" : "PREPARING",
+            },
+          },
+          invoice: {
+            create: {
+              number: invoiceNumber,
+              amount: total,
             },
           },
         },
-        shipment: {
-          create: {
-            carrier: session.metadata?.shipping_label || settings.defaultCarrier,
-            trackingNo: null,
-            status: "PREPARING",
-          },
+        include: {
+          invoice: true,
         },
-        invoice: {
-          create: {
-            number: invoiceNumber,
-            amount: total,
-          },
-        },
-      },
-      include: {
-        invoice: true,
-      },
-    });
-
-    for (const item of orderItems) {
-      if (!item.productId) continue;
-
-      const stockUpdate = await tx.product.updateMany({
-        where: {
-          id: item.productId,
-          active: true,
-          stock: { gte: item.quantity },
-        },
-        data: { stock: { decrement: item.quantity } },
       });
 
-      if (stockUpdate.count !== 1) {
-        throw new Error(`STOCK_CONFLICT:${item.productId}`);
-      }
-    }
+      if (!blocked)
+        for (const item of orderItems) {
+          if (!item.productId) continue;
 
-    return { order, created: true };
-  });
+          const stockUpdate = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              active: true,
+              stock: { gte: item.quantity },
+            },
+            data: { stock: { decrement: item.quantity } },
+          });
+
+          if (stockUpdate.count !== 1) {
+            throw new Error(`STOCK_CONFLICT:${item.productId}`);
+          }
+        }
+
+      return { order, created: true, stockConflict: blocked };
+    });
+
+  try {
+    if (unresolved) return await persist(true, "UNRESOLVED_PRODUCT");
+    try {
+      return await persist(false, null);
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.startsWith("STOCK_CONFLICT:")
+      )
+        throw error;
+      console.error(
+        `[stripe-webhook] Paiement encaissé, conflit de stock ${reference}:`,
+        error.message,
+      );
+      return await persist(true, error.message);
+    }
+  } catch (error) {
+    // Deux webhooks concurrents peuvent tenter de créer la même commande.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.order.findUnique({
+        where: { orderNumber: reference },
+        include: { invoice: true, payment: true },
+      });
+      if (existing)
+        return { order: existing, created: false, stockConflict: false };
+    }
+    throw error;
+  }
 }
 
 async function sendEmail({
@@ -470,7 +555,6 @@ function adminEmailHtml({
   `);
 }
 
-
 function asProviderData(value: Prisma.JsonValue | null | undefined) {
   if (!value || Array.isArray(value) || typeof value !== "object") return {};
   return value as Record<string, unknown>;
@@ -515,7 +599,8 @@ async function handleRefundEvent(event: Stripe.Event, stripe: Stripe) {
     charge = event.data.object as Stripe.Charge;
   } else {
     const refund = event.data.object as Stripe.Refund;
-    const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id;
+    const chargeId =
+      typeof refund.charge === "string" ? refund.charge : refund.charge?.id;
     if (!chargeId) return { processed: false, reason: "charge_missing" };
     charge = await stripe.charges.retrieve(chargeId);
   }
@@ -525,7 +610,8 @@ async function handleRefundEvent(event: Stripe.Event, stripe: Stripe) {
       ? charge.payment_intent
       : charge.payment_intent?.id;
 
-  if (!paymentIntentId) return { processed: false, reason: "payment_intent_missing" };
+  if (!paymentIntentId)
+    return { processed: false, reason: "payment_intent_missing" };
 
   const payment = await prisma.payment.findFirst({
     where: { provider: "Stripe", reference: paymentIntentId },
@@ -535,7 +621,8 @@ async function handleRefundEvent(event: Stripe.Event, stripe: Stripe) {
   if (!payment) return { processed: false, reason: "payment_not_found" };
 
   const refundedAmount = charge.amount_refunded / 100;
-  const fullyRefunded = charge.refunded || refundedAmount >= payment.amount - 0.005;
+  const fullyRefunded =
+    charge.refunded || refundedAmount >= payment.amount - 0.005;
   const status = fullyRefunded ? "refunded" : "partially_refunded";
 
   await prisma.$transaction([
@@ -556,7 +643,12 @@ async function handleRefundEvent(event: Stripe.Event, stripe: Stripe) {
       },
     }),
     ...(fullyRefunded && payment.order.status !== "REFUNDED"
-      ? [prisma.order.update({ where: { id: payment.orderId }, data: { status: "REFUNDED" } })]
+      ? [
+          prisma.order.update({
+            where: { id: payment.orderId },
+            data: { status: "REFUNDED" },
+          }),
+        ]
       : []),
   ]);
 
@@ -567,7 +659,8 @@ async function handleRefundEvent(event: Stripe.Event, stripe: Stripe) {
 
 async function handleDisputeEvent(event: Stripe.Event) {
   const dispute = event.data.object as Stripe.Dispute;
-  const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+  const chargeId =
+    typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
   if (!chargeId) return { processed: false, reason: "charge_missing" };
 
   const stripe = getStripeClient();
@@ -577,11 +670,13 @@ async function handleDisputeEvent(event: Stripe.Event) {
       ? charge.payment_intent
       : charge.payment_intent?.id;
 
-  if (!paymentIntentId) return { processed: false, reason: "payment_intent_missing" };
+  if (!paymentIntentId)
+    return { processed: false, reason: "payment_intent_missing" };
 
-  const paymentStatus = event.type === "charge.dispute.closed"
-    ? `dispute_${dispute.status}`
-    : "disputed";
+  const paymentStatus =
+    event.type === "charge.dispute.closed"
+      ? `dispute_${dispute.status}`
+      : "disputed";
 
   const updated = await updateStripePaymentState({
     paymentIntentId,
@@ -617,7 +712,10 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
 
   if (!signature) {
-    return NextResponse.json({ error: "Signature Stripe manquante." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Signature Stripe manquante." },
+      { status: 400 },
+    );
   }
 
   let event: Stripe.Event;
@@ -625,7 +723,8 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Signature invalide.";
+    const message =
+      error instanceof Error ? error.message : "Signature invalide.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
@@ -647,12 +746,18 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (["charge.refunded", "refund.created", "refund.updated"].includes(event.type)) {
+    if (
+      ["charge.refunded", "refund.created", "refund.updated"].includes(
+        event.type,
+      )
+    ) {
       const result = await handleRefundEvent(event, stripe);
       return NextResponse.json({ received: true, refund: result });
     }
 
-    if (["charge.dispute.created", "charge.dispute.closed"].includes(event.type)) {
+    if (
+      ["charge.dispute.created", "charge.dispute.closed"].includes(event.type)
+    ) {
       const result = await handleDisputeEvent(event);
       return NextResponse.json({ received: true, dispute: result });
     }
@@ -668,17 +773,30 @@ export async function POST(req: Request) {
           failureMessage: intent.last_payment_error?.message || null,
         },
       });
-      return NextResponse.json({ received: true, failed: true, matched: Boolean(updated) });
+      return NextResponse.json({
+        received: true,
+        failed: true,
+        matched: Boolean(updated),
+      });
     }
 
     const session = event.data.object as Stripe.Checkout.Session;
 
-    if (["checkout.session.async_payment_failed", "checkout.session.expired"].includes(event.type)) {
-      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+    if (
+      [
+        "checkout.session.async_payment_failed",
+        "checkout.session.expired",
+      ].includes(event.type)
+    ) {
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id;
       const updated = paymentIntentId
         ? await updateStripePaymentState({
             paymentIntentId,
-            status: event.type === "checkout.session.expired" ? "expired" : "failed",
+            status:
+              event.type === "checkout.session.expired" ? "expired" : "failed",
             event,
             patch: { checkoutSessionId: session.id },
           })
@@ -692,18 +810,31 @@ export async function POST(req: Request) {
 
     const checkoutSession = await stripe.checkout.sessions.retrieve(session.id);
     const settings = await getShopSettingsFresh();
-    const currency = normalizeCurrency(checkoutSession.metadata?.currency || checkoutSession.currency || settings.defaultCurrency) as Currency;
-    const reference = checkoutSession.metadata?.order_reference || buildOrderReference(settings);
+    const currency = normalizeCurrency(
+      checkoutSession.metadata?.currency ||
+        checkoutSession.currency ||
+        settings.defaultCurrency,
+    ) as Currency;
+    const reference =
+      checkoutSession.metadata?.order_reference ||
+      buildOrderReference(settings);
     const amountTotal = (checkoutSession.amount_total || 0) / 100;
-    const customerName = checkoutSession.customer_details?.name || "Client FAST CASH";
+    const customerName =
+      checkoutSession.customer_details?.name || "Client FAST CASH";
     const customerEmail = checkoutSession.customer_details?.email || "";
-    const customerPhone = checkoutSession.customer_details?.phone || "Non renseigné";
+    const customerPhone =
+      checkoutSession.customer_details?.phone || "Non renseigné";
 
-    const stripeLines = await stripe.checkout.sessions.listLineItems(checkoutSession.id, {
-      limit: 100,
-    });
+    const stripeLines = await stripe.checkout.sessions.listLineItems(
+      checkoutSession.id,
+      {
+        limit: 100,
+      },
+    );
 
-    const fallbackItems = await resolveMetadataItems(checkoutSession.metadata?.items);
+    const fallbackItems = await resolveMetadataItems(
+      checkoutSession.metadata?.items,
+    );
     const lines: OrderLine[] = stripeLines.data.length
       ? stripeLines.data.map((line) => ({
           name: line.description || "Produit FAST CASH",
@@ -736,8 +867,10 @@ export async function POST(req: Request) {
     revalidateOrderBackOffice(persistence.order.id);
     invalidateCatalogCache("stripe_webhook");
 
-    const offerTokens = String(checkoutSession.metadata?.offer_tokens || "").split(",").filter(Boolean);
-    if (offerTokens.length) {
+    const offerTokens = String(checkoutSession.metadata?.offer_tokens || "")
+      .split(",")
+      .filter(Boolean);
+    if (offerTokens.length && !persistence.stockConflict) {
       await prisma.productOffer.updateMany({
         where: { purchaseToken: { in: offerTokens }, usedAt: null },
         data: { status: "PURCHASED", usedAt: new Date() },
@@ -756,8 +889,19 @@ export async function POST(req: Request) {
       emailJobs.push(
         sendTransactionalEmail({
           to: customerEmail,
-          subject: `Votre commande FAST CASH Genève ${reference}`,
-          html: customerOrderConfirmationEmail({ reference, lines, total: amountTotal, currency }),
+          subject: persistence.stockConflict
+            ? `FAST CASH Genève — Paiement confirmé, commande à vérifier ${reference}`
+            : `Votre commande FAST CASH Genève ${reference}`,
+          html: persistence.stockConflict
+            ? baseEmailLayout(
+                `<div style="padding:34px;color:#111;font-family:Arial,sans-serif;line-height:1.7"><h1>Paiement confirmé</h1><p>Nous avons reçu votre paiement pour la commande <strong>${escapeHtml(reference)}</strong>.</p><p>Un article nécessite une vérification de disponibilité. Votre commande est en attente et notre équipe vous contactera pour vous proposer une solution.</p><p>Aucune action n’est nécessaire de votre part pour le moment.</p><p>L’équipe FAST CASH Genève</p></div>`,
+              )
+            : customerOrderConfirmationEmail({
+                reference,
+                lines,
+                total: amountTotal,
+                currency,
+              }),
         }),
       );
     }
@@ -766,17 +910,23 @@ export async function POST(req: Request) {
       emailJobs.push(
         sendTransactionalEmail({
           to: adminEmail,
-          subject: `Nouvelle commande FAST CASH ${reference}`,
-          html: adminNewOrderEmail({
-            reference,
-            lines,
-            total: amountTotal,
-            currency,
-            customerName,
-            customerEmail: customerEmail || "Non renseigné",
-            customerPhone,
-            sessionId: session.id,
-          }),
+          subject: persistence.stockConflict
+            ? `URGENT — Paiement encaissé / stock à vérifier — ${reference}`
+            : `Nouvelle commande FAST CASH ${reference}`,
+          html: persistence.stockConflict
+            ? baseEmailLayout(
+                `<div style="padding:24px;color:#111;font-family:Arial,sans-serif"><h1>Commande payée bloquée</h1><p>Référence : ${escapeHtml(reference)}</p><p>Le paiement Stripe est encaissé, mais le stock n’a PAS été décrémenté. Vérification manuelle obligatoire avant préparation, expédition ou réintégration de stock.</p><p>Session Stripe : ${escapeHtml(session.id)}</p></div>`,
+              )
+            : adminNewOrderEmail({
+                reference,
+                lines,
+                total: amountTotal,
+                currency,
+                customerName,
+                customerEmail: customerEmail || "Non renseigné",
+                customerPhone,
+                sessionId: session.id,
+              }),
         }),
       );
     } else {
