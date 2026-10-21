@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireAdminSession } from "@/lib/session";
 import { getInstagramConnection } from "@/lib/instagram-oauth";
-import MarketingStudio from "../MarketingStudio";
+
+import InstagramVisualBridge from "./InstagramVisualBridge";
 import styles from "../../admin.module.css";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +66,7 @@ export default async function MarketingStudioPage() {
         </div>
       </section>
 
-      <MarketingStudio
+      <InstagramVisualBridge
         instagramConnected={instagram.connected}
         instagramUsername={instagram.username || "fastcash.ge"}
       />

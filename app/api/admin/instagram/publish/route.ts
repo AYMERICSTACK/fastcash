@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
+import { prisma } from "@/lib/prisma";
+import {
+  priceToCents,
+  verifyVisualAttestation,
+} from "@/lib/instagram-visual-attestation";
 import { requireAdminSession } from "@/lib/session";
 import { uploadImageBufferToCloudinary } from "@/lib/cloudinary";
 import { publishInstagramImage } from "@/lib/instagram-publish";
@@ -33,6 +38,94 @@ export async function POST(request: Request) {
     }
 
     const source = Buffer.from(await file.arrayBuffer());
+
+    // Aucun appel Cloudinary ou Meta avant validation complete.
+    const attestation = safeText(form.get("attestation"), 4096);
+    const sourceType = safeText(form.get("source"), 20);
+    const manualConfirmation = safeText(form.get("manualConfirmation"), 30);
+    const manualProductId = safeText(form.get("productId"), 150);
+
+    // FASTCASH_CANVA_MANUAL_V1
+    if (sourceType === "fastcash") {
+      if (!attestation) {
+        return NextResponse.json(
+          { error: "Attestation FAST CASH obligatoire." },
+          { status: 409 },
+        );
+      }
+
+      const verified = verifyVisualAttestation(
+        attestation,
+        source,
+        format,
+      );
+
+      if (!verified) {
+        return NextResponse.json(
+          { error: "Signature FAST CASH invalide ou expirée." },
+          { status: 409 },
+        );
+      }
+
+      const product = await prisma.product.findUnique({
+        where: { id: verified.productId },
+        select: {
+          price: true,
+          stock: true,
+          active: true,
+        },
+      });
+
+      if (
+        !product ||
+        !product.active ||
+        product.stock <= 0 ||
+        !Number.isFinite(product.price) ||
+        product.price < 0 ||
+        priceToCents(product.price) !== verified.priceCents
+      ) {
+        return NextResponse.json(
+          { error: "Produit FAST CASH indisponible ou prix modifié." },
+          { status: 409 },
+        );
+      }
+    } else if (sourceType === "canva") {
+      if (attestation || manualConfirmation !== "confirmed") {
+        return NextResponse.json(
+          { error: "Confirmation manuelle Canva requise." },
+          { status: 409 },
+        );
+      }
+
+      if (manualProductId) {
+        const product = await prisma.product.findUnique({
+          where: { id: manualProductId },
+          select: {
+            price: true,
+            stock: true,
+            active: true,
+          },
+        });
+
+        if (
+          !product ||
+          !product.active ||
+          product.stock <= 0 ||
+          !Number.isFinite(product.price) ||
+          product.price < 0
+        ) {
+          return NextResponse.json(
+            { error: "Produit Canva associé indisponible." },
+            { status: 409 },
+          );
+        }
+      }
+    } else {
+      return NextResponse.json(
+        { error: "Origine du visuel non reconnue." },
+        { status: 409 },
+      );
+    }
     const jpeg = await sharp(source, { failOn: "none" })
       .flatten({ background: "#ffffff" })
       .jpeg({ quality: 94, chromaSubsampling: "4:4:4" })

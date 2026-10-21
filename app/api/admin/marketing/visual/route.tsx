@@ -266,19 +266,37 @@ export async function GET(request: Request) {
   const zoom: -1 | 0 | 1 = rawZoom < 0 ? -1 : rawZoom > 0 ? 1 : 0;
 
   const productId = searchParams.get("productId");
-  const product = productId
-    ? await prisma.product.findUnique({ where: { id: productId }, select: { image: true } })
-    : null;
 
-  const productImage = await imageToDataUri(product?.image, request.url, zoom);
+  if (!productId) {
+    return new Response("Produit FAST CASH requis.", { status: 400 });
+  }
+
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      image: true,
+      price: true,
+      stock: true,
+      active: true,
+    },
+  });
+
+  if (!product || !product.active || product.stock <= 0) {
+    return new Response("PRODUIT_INDISPONIBLE_VISUEL", { status: 409 });
+  }
+
+  if (!Number.isFinite(product.price) || product.price < 0) {
+    return new Response("Prix produit invalide.", { status: 409 });
+  }
+
+  const productImage = await imageToDataUri(product.image, request.url, zoom);
   const rawTitle = clean(searchParams.get("title"), "Produit FAST CASH", 100);
   const subtitle = clean(searchParams.get("subtitle"), searchParams.get("category") || searchParams.get("brand") || "Sélection FAST CASH", 55);
   const title = socialTitle(rawTitle, subtitle);
-  const rawPrice = clean(searchParams.get("price"), "0.00", 18).replace(/\s*CHF$/i, "").replace(/\s/g, "").replace(",", ".");
-  const numericPrice = Number(rawPrice);
-  const price = Number.isFinite(numericPrice)
-    ? new Intl.NumberFormat("fr-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericPrice)
-    : rawPrice;
+  const price = new Intl.NumberFormat("fr-CH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(product.price);
   const badge = clean(searchParams.get("badge"), "DISPONIBLE", 24).toUpperCase();
 
   const props: VisualProps = { width, height, image: productImage, title, subtitle, price, badge };
