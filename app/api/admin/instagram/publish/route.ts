@@ -67,6 +67,16 @@ export async function POST(request: Request) {
         );
       }
 
+      // FASTCASH_FINAL_GUARD_V1
+      if (!manualProductId || manualProductId !== verified.productId) {
+        return NextResponse.json(
+          {
+            error: "Produit sélectionné différent du produit signé. Régénérez le visuel.",
+          },
+          { status: 409 },
+        );
+      }
+
       const product = await prisma.product.findUnique({
         where: { id: verified.productId },
         select: {

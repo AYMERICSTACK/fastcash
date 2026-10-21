@@ -198,6 +198,19 @@ export default function MarketingStudio({
 
   async function publishToInstagram() {
     if (!file || !instagramConnected || publishing) return;
+
+    // FASTCASH_FINAL_GUARD_V1
+    if (
+      generatedAttestation &&
+      (!selectedProduct ||
+        !generatedVisual ||
+        selectedProduct.id !== generatedVisual.product.id)
+    ) {
+      window.alert(
+        "Le produit sélectionné ne correspond plus au visuel FAST CASH signé. Régénérez le visuel."
+      );
+      return;
+    }
     if (!generatedAttestation) {
       const manualConfirmed = window.confirm(
         "VISUEL CANVA NON CERTIFIÉ\n\nFAST CASH ne peut pas vérifier automatiquement les prix ou textes présents dans cette image.\n\nConfirmez-vous avoir vérifié manuellement son contenu et vouloir continuer ?"
@@ -440,6 +453,22 @@ export default function MarketingStudio({
           </div>
         ) : null}
 
+        {/* FASTCASH_FINAL_GUARD_V1 */}
+        {file && !generatedAttestation && (
+          <p
+            role="status"
+            style={{
+              padding: "12px",
+              border: "1px solid #d97706",
+              borderRadius: "8px",
+              marginBottom: "12px",
+            }}
+          >
+            <strong>Visuel Canva — prix non certifié.</strong>{" "}
+            Vérifiez manuellement le prix, les textes et le produit avant publication.
+            Une confirmation supplémentaire sera demandée.
+          </p>
+        )}
         <button
           className={`${styles.button} ${styles.instagramPublishButton}`}
           type="button"
