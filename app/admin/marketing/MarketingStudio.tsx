@@ -62,7 +62,7 @@ export default function MarketingStudio({
   const [productSearchError, setProductSearchError] = useState<string | null>(null);
 
   const productUrl = selectedProduct && typeof window !== "undefined"
-    ? `${process.env.NEXT_PUBLIC_INSTAGRAM_PRODUCT_BASE_URL?.replace(/\/$/, "")}/produits/${selectedProduct.slug}`
+    ? `${(process.env.NEXT_PUBLIC_INSTAGRAM_PRODUCT_BASE_URL || "https://www.fastcash-geneve.ch")?.replace(/\/$/, "")}/produits/${selectedProduct.slug}`
     : "";
   const finalCaption = selectedProduct && productUrl
     ? mergeCaptionAndProductLink(caption, productUrl)
