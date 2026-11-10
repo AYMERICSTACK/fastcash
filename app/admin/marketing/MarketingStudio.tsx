@@ -196,8 +196,33 @@ export default function MarketingStudio({
     setCaption(suggestedCaption.slice(0, 2200));
   }
 
+  async function prepareStoryWithProductLink() {
+    if (!file || !selectedProduct || !productUrl) return;
+    // Le sticker lien ne peut pas etre cree par notre endpoint Meta.
+    // Ne jamais envoyer cette Story a /api/admin/instagram/publish.
+    const urlCopied = await navigator.clipboard.writeText(productUrl).then(() => true).catch(() => false);
+    const downloadUrl = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = file.name || "fastcash-story.png";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+    setPublishMessage({
+      kind: "success",
+      text: urlCopied
+        ? "Visuel telecharge et lien produit copie. Ouvrez Instagram, creez une Story avec ce visuel, ajoutez le sticker Lien, collez l'URL puis publiez."
+        : "Visuel telecharge. Copiez le lien produit ci-dessous, puis ajoutez-le au sticker Lien dans Instagram avant de publier.",
+    });
+  }
+
   async function publishToInstagram() {
-    if (!file || !instagramConnected || publishing) return;
+    if (!file || publishing || (!instagramConnected && !(format === "story" && selectedProduct))) return;
+    if (format === "story" && selectedProduct) {
+      await prepareStoryWithProductLink();
+      return;
+    }
 
     // FASTCASH_FINAL_GUARD_V1
     if (
@@ -409,11 +434,22 @@ export default function MarketingStudio({
           <small className={styles.marketingCaptionCount}>{caption.length}/2200</small>
         </label>
 
-        {format === "post" && selectedProduct && productUrl ? (
+        {selectedProduct && productUrl ? (
           <div className={styles.instagramGeneratedLink}>
-            <span>Lien produit ajouté automatiquement à la publication</span>
+            <span>{format === "story" ? "Lien du sticker Story - fiche produit exacte" : "Lien produit ajouté automatiquement à la publication"}</span>
             <strong>{productUrl}</strong>
-            <small>Instagram affiche cette URL dans la légende. Dans un post classique, elle peut ne pas être cliquable.</small>
+            {format === "story" ? (
+              <>
+                <button type="button" className={styles.instagramFileButton} onClick={() => {
+                  void navigator.clipboard.writeText(productUrl).then(() => {
+                    setPublishMessage({ kind: "success", text: "Lien de la fiche produit copie. Collez-le dans le sticker Lien de votre Story Instagram." });
+                  }).catch(() => {
+                    setPublishMessage({ kind: "error", text: "Copie impossible. Selectionnez et copiez l'URL affichee ci-dessus." });
+                  });
+                }}>Copier le lien du produit</button>
+                <small>Le sticker cliquable doit etre ajoute dans l'application Instagram. Le Studio ne publiera pas cette Story sans sticker a votre place.</small>
+              </>
+            ) : <small>Instagram affiche cette URL dans la legende. Dans un post classique, elle n'est pas cliquable.</small>}
           </div>
         ) : null}
       </section>
@@ -445,7 +481,7 @@ export default function MarketingStudio({
         ) : null}
 
         {publishMessage ? (
-          <div className={`${styles.marketingPublishStatus} ${publishMessage.kind === "success" ? styles.marketingPublishSuccess : styles.marketingPublishError}`}>
+          <div className={`${styles.marketingPublishStatus} ${publishMessage.kind === "success" ? styles.marketingPublishSuccess : styles.marketingPublishError}`} style={publishMessage.kind === "success" ? { backgroundColor: "#123524", color: "#ffffff", border: "1px solid #347c54", borderRadius: "12px", padding: "14px 18px", fontWeight: 700, lineHeight: 1.5, textAlign: "center" } : undefined}>
             <span>{publishMessage.text}</span>
             {publishMessage.kind === "success" && publishMessage.permalink ? (
               <a href={publishMessage.permalink} target="_blank" rel="noreferrer">Voir sur Instagram ↗</a>
@@ -473,12 +509,14 @@ export default function MarketingStudio({
           className={`${styles.button} ${styles.instagramPublishButton}`}
           type="button"
           onClick={publishToInstagram}
-          disabled={!file || !instagramConnected || publishing}
+          disabled={!file || publishing || (!instagramConnected && !(format === "story" && selectedProduct))}
         >
-          {publishing ? "Publication en cours…" : format === "story" ? "Publier en Story" : "Publier sur Instagram"}
+          {publishing ? "Publication en cours…" : format === "story" && selectedProduct ? "Telecharger la Story et copier le lien" : format === "story" ? "Publier en Story sans sticker" : "Publier sur Instagram"}
         </button>
         <p className={styles.marketingHint}>
-          Le fichier est préparé automatiquement pour Instagram au moment de la publication.
+          {format === "story" && selectedProduct
+            ? "Etapes : 1. Telecharger le visuel et copier le lien. 2. Ouvrir Instagram sur mobile. 3. Ajouter le sticker Lien avec cette URL. 4. Publier la Story. Aucun envoi automatique a Meta depuis ce bouton."
+            : "Le fichier est prepare automatiquement pour Instagram au moment de la publication."}
         </p>
       </section>
     </div>
