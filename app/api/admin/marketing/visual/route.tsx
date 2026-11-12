@@ -16,6 +16,9 @@ type VisualProps = {
   subtitle: string;
   price: string;
   badge: string;
+  feature1: string;
+  feature2: string;
+  feature3: string;
 };
 
 function clean(value: string | null, fallback: string, max = 100) {
@@ -136,7 +139,42 @@ function Footer({ color = "#d4af37", muted = "#8b8170", label = "GENÈVE · SUIS
   );
 }
 
-function TechVisual({ height, image, title, subtitle, price, badge }: VisualProps) {
+function VisualFeatures({
+  items,
+  color,
+  story,
+}: {
+  items: string[];
+  color: string;
+  story: boolean;
+}) {
+  const visible = items.map((item) => item.trim()).filter(Boolean);
+  if (visible.length === 0) return null;
+
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: story ? 9 : 6,
+      marginTop: story ? 22 : 15,
+      maxWidth: "100%",
+    }}>
+      {visible.map((item, index) => (
+        <span key={index} style={{
+          display: "flex",
+          color,
+          fontSize: story ? 20 : 15,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          overflowWrap: "anywhere",
+        }}>
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+function TechVisual({ height, image, title, subtitle, price, badge, feature1, feature2, feature3 }: VisualProps) {
   const story = height > 1500;
   return (
     <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: "column", position: "relative", backgroundColor: "#050914", color: "#ffffff", fontFamily: "Arial, sans-serif", padding: story ? "66px 66px 54px" : "52px 62px 44px", overflow: "hidden" }}>
@@ -158,9 +196,7 @@ function TechVisual({ height, image, title, subtitle, price, badge }: VisualProp
           </div>
           <div style={{ display: "flex", marginTop: 26 }}><Price value={price} accent="#5bc9ff" light story={story} /></div>
           <div style={{ display: "flex", marginTop: 22, padding: "13px 18px", alignSelf: "flex-start", border: "1px solid #274269", borderRadius: 999, color: "#d7e4f7", fontSize: story ? 21 : 17 }}>Disponible maintenant · Genève</div>
-          <div style={{ display: "flex", marginTop: 28, gap: 28, color: "#a6b8d3", fontSize: story ? 18 : 15, fontWeight: 800, letterSpacing: 1.5 }}>
-            <span style={{ display: "flex" }}>PRODUIT CONTRÔLÉ</span><span style={{ display: "flex" }}>RETRAIT À GENÈVE</span>
-          </div>
+          <VisualFeatures items={[feature1, feature2, feature3]} color="#d5e8ff" story={story} />
         </div>
 
         <div style={{ display: "flex", flex: 1, minHeight: story ? 900 : 0, position: "relative", alignItems: "center", justifyContent: "center" }}>
@@ -175,7 +211,7 @@ function TechVisual({ height, image, title, subtitle, price, badge }: VisualProp
   );
 }
 
-function LuxuryVisual({ height, image, title, subtitle, price, badge }: VisualProps) {
+function LuxuryVisual({ height, image, title, subtitle, price, badge, feature1, feature2, feature3 }: VisualProps) {
   const story = height > 1500;
   return (
     <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: "column", position: "relative", backgroundColor: "#eee7da", color: "#17120e", fontFamily: "Arial, sans-serif", padding: story ? "68px 68px 56px" : "54px 64px 44px", overflow: "hidden" }}>
@@ -195,8 +231,7 @@ function LuxuryVisual({ height, image, title, subtitle, price, badge }: VisualPr
         <div style={{ display: "flex", flex: story ? "0 0 auto" : "0 0 38%", flexDirection: "column", justifyContent: "center" }}>
           <span style={{ display: "flex", color: "#a17a31", fontSize: 14, fontWeight: 900, letterSpacing: 5.5, textTransform: "uppercase" }}>{subtitle}</span>
           <span style={{ display: "flex", marginTop: 22, fontFamily: "Georgia, serif", fontSize: title.length > 55 ? 46 : title.length > 35 ? 55 : 67, lineHeight: .96, fontWeight: 700, letterSpacing: -1.3 }}>{title}</span>
-          <span style={{ display: "flex", marginTop: 24, color: "#756b5e", fontFamily: "Georgia, serif", fontSize: story ? 27 : 23, fontStyle: "italic" }}>Une pièce sélectionnée à Genève.</span>
-          <span style={{ display: "flex", marginTop: 10, color: "#9d762e", fontSize: story ? 17 : 14, fontWeight: 900, letterSpacing: 2.4 }}>AUTHENTICITÉ · ÉTAT · DÉTAILS CONTRÔLÉS</span>
+          <VisualFeatures items={[feature1, feature2, feature3]} color="#75603a" story={story} />
           <div style={{ display: "flex", width: 96, height: 2, margin: "30px 0 26px", backgroundColor: "#b88a32" }} />
           <Price value={price} accent="#9d762e" story={story} />
           <span style={{ display: "flex", marginTop: 20, color: "#74695b", fontSize: story ? 20 : 17, fontWeight: 700, letterSpacing: .4 }}>EN BOUTIQUE & SUR FASTCASH-GENEVE.CH</span>
@@ -215,7 +250,7 @@ function LuxuryVisual({ height, image, title, subtitle, price, badge }: VisualPr
   );
 }
 
-function WatchesVisual({ height, image, title, subtitle, price, badge }: VisualProps) {
+function WatchesVisual({ height, image, title, subtitle, price, badge, feature1, feature2, feature3 }: VisualProps) {
   const story = height > 1500;
   return (
     <div style={{ display: "flex", width: "100%", height: "100%", flexDirection: "column", position: "relative", backgroundColor: "#050504", color: "#f6f0e4", fontFamily: "Arial, sans-serif", padding: story ? "68px 68px 56px" : "54px 64px 44px", overflow: "hidden" }}>
@@ -240,10 +275,8 @@ function WatchesVisual({ height, image, title, subtitle, price, badge }: VisualP
       </div>
 
       <div style={{ display: "flex", position: "relative", alignItems: "flex-end", justifyContent: "space-between", marginTop: story ? 28 : 18 }}>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ display: "flex", color: "#8f8164", fontSize: story ? 20 : 16, fontWeight: 900, letterSpacing: story ? 3.2 : 2.6 }}>DISPONIBLE À GENÈVE</span>
-          <span style={{ display: "flex", marginTop: 8, color: "#c5b99e", fontSize: story ? 24 : 19 }}>Boutique & achat en ligne</span>
-          <span style={{ display: "flex", marginTop: 10, color: "#d4af37", fontSize: story ? 18 : 14, fontWeight: 900, letterSpacing: story ? 2.4 : 2 }}>PRODUIT CONTRÔLÉ · SÉLECTION FAST CASH</span>
+        <div style={{ display: "flex", flexDirection: "column", maxWidth: "62%" }}>
+          <VisualFeatures items={[feature1, feature2, feature3]} color="#d4c49e" story={story} />
         </div>
         <Price value={price} accent="#d4af37" light story={story} />
       </div>
@@ -299,7 +332,14 @@ export async function GET(request: Request) {
   }).format(product.price);
   const badge = clean(searchParams.get("badge"), "DISPONIBLE", 24).toUpperCase();
 
-  const props: VisualProps = { width, height, image: productImage, title, subtitle, price, badge };
+  const feature1 = (searchParams.get("feature1") ?? "Produit contrôlé et vérifié").trim().slice(0, 90);
+  const feature2 = (searchParams.get("feature2") ?? "Garantie FAST CASH").trim().slice(0, 90);
+  const feature3 = (searchParams.get("feature3") ?? "Disponible à Genève").trim().slice(0, 90);
+
+  const props: VisualProps = {
+    width, height, image: productImage, title, subtitle, price, badge,
+    feature1, feature2, feature3,
+  };
   const element = theme === "tech"
     ? <TechVisual {...props} />
     : theme === "luxury"
